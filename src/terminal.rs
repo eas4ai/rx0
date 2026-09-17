@@ -249,12 +249,17 @@ mod tests {
 
     #[test]
     fn stdin_reaches_shell() {
-        let (sh, mut args) = test_shell();
-        // Bare -Command takes no script: "-" reads it from stdin instead.
+        // cmd.exe idles reading the console. powershell wants -Command,
+        // which cannot take its script from a pty ("-" demands a pipe).
         #[cfg(windows)]
-        args.push("-".to_string());
+        let (sh, args) = ("cmd.exe".to_string(), Vec::new());
+        #[cfg(not(windows))]
+        let (sh, args) = test_shell();
         let m = TerminalManager::new(std::env::temp_dir());
         m.start(&sh, &args, 24, 80).unwrap();
+        #[cfg(windows)]
+        m.write(b"echo via-stdin\r\nexit\r\n").unwrap();
+        #[cfg(not(windows))]
         m.write(b"echo via-stdin\nexit\n").unwrap();
         let out = collect(&m, "via-stdin", Duration::from_secs(10));
         assert!(out.contains("via-stdin"), "got: {out:?}");
