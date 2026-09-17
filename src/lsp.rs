@@ -174,7 +174,12 @@ pub fn uri_to_path(uri: &str) -> Result<PathBuf, String> {
     }
     let mut s = String::from_utf8(bytes).map_err(|_| format!("non-utf8 uri: {uri}"))?;
     if cfg!(windows) {
-        s = s.trim_start_matches('/').to_string();
+        // file:///C:/x sheds one slash (drive path); anything else keeps
+        // its root, mirroring Go filepath.FromSlash.
+        let b = s.as_bytes();
+        if s.starts_with('/') && b.len() > 2 && b[1].is_ascii_alphabetic() && b[2] == b':' {
+            s.remove(0);
+        }
         s = s.replace('/', "\\");
     }
     Ok(PathBuf::from(s))
@@ -726,14 +731,32 @@ mod tests {
     /// Ports Go `TestURIRoundTrip`.
     #[test]
     fn uri_round_trip() {
-        for p in [
-            "/home/user/project/main.go",
-            "/home/user/my project/a b.go", // spaces must be escaped
-            "/tmp/weird#name$x.go",
-        ] {
+        // (native path, exact uri): both directions pinned, so spaces
+        // must be percent-encoded and drive roots must survive.
+        #[cfg(windows)]
+        let cases = [
+            ("C:\\Users\\me\\main.go", "file:///C:/Users/me/main.go"),
+            (
+                "C:\\Users\\my self\\a b.go",
+                "file:///C:/Users/my%20self/a%20b.go",
+            ),
+            ("D:\\weird#name$x.go", "file:///D:/weird%23name$x.go"),
+        ];
+        #[cfg(not(windows))]
+        let cases = [
+            (
+                "/home/user/project/main.go",
+                "file:///home/user/project/main.go",
+            ),
+            (
+                "/home/user/my project/a b.go",
+                "file:///home/user/my%20project/a%20b.go",
+            ),
+            ("/tmp/weird#name$x.go", "file:///tmp/weird%23name$x.go"),
+        ];
+        for (p, want_uri) in cases {
             let uri = path_to_uri(Path::new(p));
-            assert!(uri.starts_with("file://"), "{uri}");
-            assert!(!uri.contains(' '), "spaces must be percent-encoded: {uri}");
+            assert_eq!(uri, want_uri, "{p}");
             let back = uri_to_path(&uri).expect("must parse");
             assert_eq!(back.to_string_lossy(), p, "{p} -> {uri}");
         }

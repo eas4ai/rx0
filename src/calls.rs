@@ -311,6 +311,12 @@ mod tests {
         )
         .unwrap();
         let a_uri = crate::lsp::path_to_uri(&dir.path().join("a.go"));
+        // Absolute and outside the workspace root; native to the
+        // platform so the URI round trip stays lossless. The UI shows
+        // external paths slash-normalized (see tree_path).
+        #[cfg(windows)]
+        let ext_path = "C:\\go\\src\\fmt\\print.go";
+        #[cfg(not(windows))]
         let ext_path = "/usr/lib/go/src/fmt/print.go";
         let ext_uri = crate::lsp::path_to_uri(std::path::Path::new(ext_path));
         let sent: std::sync::Arc<Mutex<Vec<(String, String)>>> =
@@ -363,7 +369,11 @@ mod tests {
         drop(echoed);
         // Sorted by path: the absolute external path sorts before "a.go".
         let (ext, a) = (&callers[0], &callers[1]);
-        assert!(ext.ext && ext.path == ext_path && m.allowed(std::path::Path::new(ext_path)));
+        assert!(
+            ext.ext
+                && ext.path == ext_path.replace('\\', "/")
+                && m.allowed(std::path::Path::new(ext_path))
+        );
         assert_eq!(a.name, "A");
         assert_eq!(a.site_path, "a.go");
         assert_eq!(a.sites, vec![3]);

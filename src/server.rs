@@ -292,12 +292,33 @@ pub fn safe_path(root: &Path, rel: &str) -> Option<(PathBuf, String)> {
 /// language server names as a definition target. Ports Go `resolvePath`.
 /// The allowlist is empty until the LSP slice lands, so absolute paths are
 /// refused today.
+/// Go `filepath.IsAbs`, which on Windows also counts a leading
+/// separator (`\etc\passwd`) as absolute. Rust's `Path::is_absolute`
+/// needs a drive prefix there, so without this Unix-rooted API paths
+/// would slip through to the join below.
+fn is_abs(p: &Path) -> bool {
+    if p.is_absolute() {
+        return true;
+    }
+    #[cfg(windows)]
+    {
+        matches!(
+            p.as_os_str().as_encoded_bytes().first(),
+            Some(b'/') | Some(b'\\')
+        )
+    }
+    #[cfg(not(windows))]
+    {
+        false
+    }
+}
+
 pub fn resolve_path(
     root: &Path,
     allowed_outside: &dyn Fn(&Path) -> bool,
     p: &str,
 ) -> Option<(PathBuf, String)> {
-    if Path::new(p.trim()).is_absolute() {
+    if is_abs(Path::new(p.trim())) {
         let abs = lexical_clean(Path::new(p.trim()));
         if allowed_outside(&abs) {
             let display = abs.to_string_lossy().replace('\\', "/");
@@ -1640,10 +1661,15 @@ mod tests {
         let lsp = LspManager::new(r.clone(), false);
         let allow = |p: &Path| lsp.allowed(p);
         assert!(resolve_path(&r, &allow, "/etc/passwd").is_none());
-        lsp.allow(Path::new("/usr/lib/go/src/strings/builder.go"));
-        let (abs, _) =
-            resolve_path(&r, &allow, "/usr/lib/go/src/strings/builder.go").expect("allowlisted");
-        assert_eq!(abs.to_string_lossy(), "/usr/lib/go/src/strings/builder.go");
+        // Absolute and allowlisted; native so lexical_clean round-trips
+        // through the allowlist comparison.
+        #[cfg(windows)]
+        let lib = "C:\\go\\src\\strings\\builder.go";
+        #[cfg(not(windows))]
+        let lib = "/usr/lib/go/src/strings/builder.go";
+        lsp.allow(Path::new(lib));
+        let (abs, _) = resolve_path(&r, &allow, lib).expect("allowlisted");
+        assert_eq!(abs.to_string_lossy(), lib);
         assert!(resolve_path(&r, &allow, "/usr/lib/go/src/strings/other.go").is_none());
         assert!(resolve_path(&r, &allow, "../../../etc/shadow").is_none());
     }

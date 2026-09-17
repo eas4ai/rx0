@@ -1353,7 +1353,14 @@ mod tests {
         let (_dir, _lock, _env) = isolate();
         let bindir = crate::testutil::tempdir("agentbin");
         let old_path = std::env::var("PATH").unwrap_or_default();
-        let new_path = format!("{}:{}", bindir.path().display(), old_path);
+        // PATH separator: ';' on Windows, ':' elsewhere. (join_paths is
+        // wrong here: it rejects elements containing the separator, and
+        // the existing PATH is full of them.)
+        #[cfg(windows)]
+        const PATH_SEP: char = ';';
+        #[cfg(not(windows))]
+        const PATH_SEP: char = ':';
+        let new_path = format!("{}{}{}", bindir.path().display(), PATH_SEP, old_path);
         let _path_guard = crate::testutil::set_env(&[("PATH", &new_path)]);
         for p in agent_presets() {
             let bin = bindir.path().join(&p.args[0]);
@@ -1417,9 +1424,23 @@ mod tests {
             .get("claude")
             .cloned()
             .unwrap_or_default();
-        assert!(!models.is_empty());
-        assert_eq!(models[0], "haiku");
-        assert!(models.contains(&"fable".to_string()), "{models:?}");
+        // The extensionless shell-script fake cannot spawn under
+        // CreateProcess: discovery must degrade to the static list.
+        #[cfg(windows)]
+        assert_eq!(
+            models,
+            vec![
+                "haiku".to_string(),
+                "sonnet".to_string(),
+                "opus".to_string()
+            ]
+        );
+        #[cfg(not(windows))]
+        {
+            assert!(!models.is_empty());
+            assert_eq!(models[0], "haiku");
+            assert!(models.contains(&"fable".to_string()), "{models:?}");
+        }
     }
 
     /// Ports Go `TestReadLineRange`.

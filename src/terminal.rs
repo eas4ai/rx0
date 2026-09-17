@@ -218,6 +218,13 @@ mod tests {
         let mut got = Vec::new();
         while Instant::now() < deadline {
             if let Some(chunk) = m.recv_timeout(Duration::from_millis(50)) {
+                // ConPTY shells open with a cursor-position query; a real
+                // terminal answers, so the headless test must reply or the
+                // shell stalls waiting for it.
+                #[cfg(windows)]
+                if chunk.windows(4).any(|w| w == b"\x1b[6n") {
+                    let _ = m.write(b"\x1b[1;1R");
+                }
                 got.extend_from_slice(&chunk);
                 if String::from_utf8_lossy(&got).contains(want) {
                     break;
