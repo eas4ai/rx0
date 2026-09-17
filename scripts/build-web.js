@@ -117,7 +117,10 @@ function buildWithNode() {
 
 function run() {
   const start = Date.now();
-  if (hasBun()) {
+  // The pure-Node bundler is canonical: it runs everywhere Node 24 does
+  // (including CI, which has no bun) and produces byte-identical output
+  // on every machine. Bun remains an opt-in fast path via PX0_USE_BUN=1.
+  if (process.env.PX0_USE_BUN === '1' && hasBun()) {
     buildWithBun();
   } else {
     buildWithNode();
