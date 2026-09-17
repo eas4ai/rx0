@@ -1,0 +1,6 @@
+# Generated web bundle: CI byte-compares these against a fresh
+# `npm run build`, so git must never normalize their line endings
+# (Windows checkouts would otherwise show phantom diffs).
+web/app.js -text
+web/app.js.LICENSE.txt -text
+web/vendor/*.css -text
