@@ -85,6 +85,10 @@ jobs:
         run: node ./scripts/build-web.js
 
       - name: Build Release Binary
+        # PowerShell (the Windows default) does not understand
+        # backslash continuations or `mkdir -p`: the exe silently
+        # never reached dist/ and the artifact uploaded empty.
+        shell: bash
         env:
           RX0_POSTHOG_KEY: ${{ secrets.POSTHOG_KEY }}
         run: |
