@@ -132,13 +132,15 @@ jobs:
           cat checksums.txt
 
       - name: Create GitHub Release
-        uses: softprops/action-gh-release@v2
-        with:
-          tag_name: ${{ steps.get_version.outputs.tag }}
-          name: ${{ steps.get_version.outputs.tag }}
-          draft: false
-          prerelease: false
-          generate_release_notes: true
-          files: |
-            dist/rx0-*
-            dist/checksums.txt
+        # `gh release upload` instead of softprops/action-gh-release:
+        # the action's concurrent uploads race on their temp dir
+        # ("Error creating asset temp dir") and fail the publish.
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          cd dist
+          TAG="${{ steps.get_version.outputs.tag }}"
+          if ! gh release view "$TAG" >/dev/null 2>&1; then
+            gh release create "$TAG" --title "$TAG" --generate-notes
+          fi
+          gh release upload "$TAG" rx0-* checksums.txt --clobber
