@@ -31,7 +31,10 @@ jobs:
             goos: linux
             goarch: arm64
             ext: ''
-          - runner: macos-13
+          # Intel macOS builds cross-compile from an ARM runner:
+          # GitHub retired the macos-13 Intel runners, and a job pinned
+          # to a dead label queues forever.
+          - runner: macos-14
             target: x86_64-apple-darwin
             goos: darwin
             goarch: amd64
