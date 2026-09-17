@@ -325,7 +325,7 @@ mod tests {
 
     #[test]
     fn go_outline_names_funcs_types_and_vars() {
-        let dir = std::env::temp_dir().join(format!("px0-sym-{}", std::process::id()));
+        let dir = std::env::temp_dir().join(format!("rx0-sym-{}", std::process::id()));
         std::fs::create_dir_all(&dir).unwrap();
         let file = dir.join("a.go");
         std::fs::write(
@@ -346,7 +346,7 @@ mod tests {
 
     #[test]
     fn rust_outline_and_noise_filter() {
-        let dir = std::env::temp_dir().join(format!("px0-sym-rs-{}", std::process::id()));
+        let dir = std::env::temp_dir().join(format!("rx0-sym-rs-{}", std::process::id()));
         std::fs::create_dir_all(&dir).unwrap();
         let file = dir.join("a.rs");
         std::fs::write(&file, "pub fn main() {}\nstruct S;\nif x {}\n").unwrap();
@@ -359,7 +359,7 @@ mod tests {
 
     #[test]
     fn markdown_headings_carry_level_indent() {
-        let dir = std::env::temp_dir().join(format!("px0-sym-md-{}", std::process::id()));
+        let dir = std::env::temp_dir().join(format!("rx0-sym-md-{}", std::process::id()));
         std::fs::create_dir_all(&dir).unwrap();
         let file = dir.join("a.md");
         std::fs::write(&file, "# Title\n\n## Sub ##\n").unwrap();

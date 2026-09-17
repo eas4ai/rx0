@@ -39,7 +39,7 @@ pub struct LspInstallDef {
     /// "darwin", "linux" or "windows"; empty for any.
     pub os: String,
     pub cmd: Vec<String>,
-    /// px0 may run it: user-level and non-interactive.
+    /// rx0 may run it: user-level and non-interactive.
     pub auto: bool,
 }
 
@@ -476,7 +476,7 @@ impl LspManager {
     pub fn state(&self, rel: &str) -> (LspState, String) {
         let Some(def) = self.def_for(rel) else {
             // Discovery runs in the background at startup. Until it
-            // finishes, a file type px0 knows may still get a server.
+            // finishes, a file type rx0 knows may still get a server.
             if self.enabled
                 && !self.is_discovered()
                 && !registry_for(rel, &self.registry).is_empty()
@@ -679,7 +679,7 @@ impl LspManager {
 
 // ---------------------------------------------------------------- lookup
 
-/// Every server px0 knows for rel's extension, best first, installed
+/// Every server rx0 knows for rel's extension, best first, installed
 /// or not. Ports Go `registryFor`.
 pub fn registry_for(rel: &str, registry: &[LspServerDef]) -> Vec<LspServerDef> {
     let ext = Path::new(rel)
@@ -847,7 +847,7 @@ mod tests {
         LspServerDef {
             name: "gone".to_string(),
             lang: "Go".to_string(),
-            cmd: vec!["px0-test-no-such-language-server".to_string()],
+            cmd: vec!["rx0-test-no-such-language-server".to_string()],
             exts: vec![".go".to_string()],
             lang_ids: HashMap::new(),
             default_lang: "go".to_string(),
@@ -870,7 +870,7 @@ mod tests {
     /// installed. Ports the tail of Go `TestManagerDisabled`.
     #[test]
     fn disabled_manager_resolves_nothing() {
-        let root = std::env::temp_dir().join(format!("px0-lsp-off-{}", std::process::id()));
+        let root = std::env::temp_dir().join(format!("rx0-lsp-off-{}", std::process::id()));
         std::fs::create_dir_all(&root).unwrap();
         let m = LspManager::new(root, false);
         assert!(m.available().is_empty());
@@ -886,7 +886,7 @@ mod tests {
         let mut by_ext = HashMap::new();
         by_ext.insert(".go".to_string(), def.clone());
         let m = LspManager::for_test(
-            std::env::temp_dir().join(format!("px0-lsp-crash-{}", std::process::id())),
+            std::env::temp_dir().join(format!("rx0-lsp-crash-{}", std::process::id())),
             by_ext,
         );
         m.inner
@@ -941,7 +941,7 @@ mod tests {
     #[test]
     fn look_path_finds_extra_dirs() {
         let dir = crate::testutil::tempdir("lspbin");
-        let name = "px0-test-fake-language-server";
+        let name = "rx0-test-fake-language-server";
         let path = dir.path().join(name);
         std::fs::write(&path, "#!/bin/sh\n").unwrap();
         #[cfg(unix)]
@@ -955,7 +955,7 @@ mod tests {
         assert_eq!(Path::new(&found).parent().unwrap(), dir.path());
     }
 
-    /// Every recipe is well formed, and nothing px0 runs by itself asks
+    /// Every recipe is well formed, and nothing rx0 runs by itself asks
     /// for root. Ports Go `TestInstallRecipes`.
     #[test]
     fn install_recipes_well_formed() {
@@ -985,7 +985,7 @@ mod tests {
     #[test]
     fn install_refusals() {
         let off = LspManager::new(
-            std::env::temp_dir().join(format!("px0-lsp-install-{}", std::process::id())),
+            std::env::temp_dir().join(format!("rx0-lsp-install-{}", std::process::id())),
             false,
         );
         assert!(
@@ -993,7 +993,7 @@ mod tests {
             "disabled install succeeded"
         );
         let m = LspManager::for_test(std::env::temp_dir(), HashMap::new());
-        assert!(m.install("px0-no-such-server", 0).is_err());
+        assert!(m.install("rx0-no-such-server", 0).is_err());
         assert!(m.install("gopls", 99).is_err());
         assert!(m.install("gopls", -1).is_err());
         for def in lsp_registry() {

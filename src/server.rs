@@ -189,7 +189,7 @@ struct DefResponse {
 #[folder = "web/"]
 struct EmbeddedAssets;
 
-/// Where static assets come from: the binary (`px0` default) or disk
+/// Where static assets come from: the binary (`rx0` default) or disk
 /// (`-dev DIR`, mirroring Go `useDiskAssets`).
 #[derive(Clone, Debug)]
 pub enum AssetSource {
@@ -433,7 +433,7 @@ fn settings_path_string() -> String {
         .unwrap_or_default()
 }
 
-/// Admit a mutating request only when it is a POST from px0's own
+/// Admit a mutating request only when it is a POST from rx0's own
 /// page. Ports Go `localPost`: Browsers send Origin on every POST, so
 /// a page from another site cannot pass. Requiring the Host to be an
 /// IP address or localhost also shuts out DNS rebinding.
@@ -461,7 +461,7 @@ fn local_post(
     if !is_loopback {
         return Err((
             StatusCode::FORBIDDEN,
-            "open px0 by IP address or localhost to change settings".to_string(),
+            "open rx0 by IP address or localhost to change settings".to_string(),
         ));
     }
     let origin = headers
@@ -478,7 +478,7 @@ fn local_post(
     if origin_host != host {
         return Err((
             StatusCode::FORBIDDEN,
-            "request did not come from px0".to_string(),
+            "request did not come from rx0".to_string(),
         ));
     }
     Ok(())
@@ -1457,7 +1457,7 @@ mod tests {
         assert!(resolve_path(&r, &deny, "greet.go").is_some());
     }
 
-    /// Only a POST from px0's own page, addressed by IP or localhost,
+    /// Only a POST from rx0's own page, addressed by IP or localhost,
     /// may mutate. Ports Go `TestLocalPost`.
     #[test]
     fn local_post_gate() {

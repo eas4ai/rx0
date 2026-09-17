@@ -16,7 +16,7 @@ permissions:
 
 jobs:
   build-and-release:
-    name: Build & Release px0 (${{ matrix.goos }}/${{ matrix.goarch }})
+    name: Build & Release rx0 (${{ matrix.goos }}/${{ matrix.goarch }})
     runs-on: ${{ matrix.runner }}
     strategy:
       matrix:
@@ -83,18 +83,18 @@ jobs:
 
       - name: Build Release Binary
         env:
-          PX0_POSTHOG_KEY: ${{ secrets.POSTHOG_KEY }}
+          RX0_POSTHOG_KEY: ${{ secrets.POSTHOG_KEY }}
         run: |
           cargo build --release --target ${{ matrix.target }}
           mkdir -p dist
-          cp "target/${{ matrix.target }}/release/px0${{ matrix.ext }}" \
-            "dist/px0-${{ steps.get_version.outputs.version }}-${{ matrix.goos }}-${{ matrix.goarch }}${{ matrix.ext }}"
+          cp "target/${{ matrix.target }}/release/rx0${{ matrix.ext }}" \
+            "dist/rx0-${{ steps.get_version.outputs.version }}-${{ matrix.goos }}-${{ matrix.goarch }}${{ matrix.ext }}"
 
       - name: Upload Artifacts
         uses: actions/upload-artifact@v4
         with:
-          name: px0-${{ matrix.goos }}-${{ matrix.goarch }}
-          path: dist/px0-*
+          name: rx0-${{ matrix.goos }}-${{ matrix.goarch }}
+          path: dist/rx0-*
 
   publish:
     name: Create GitHub Release
@@ -118,10 +118,10 @@ jobs:
           merge-multiple: true
 
       - name: Generate Checksums
-        # `px0 --update` refuses a release without checksums.txt.
+        # `rx0 --update` refuses a release without checksums.txt.
         run: |
           cd dist
-          sha256sum px0-* > checksums.txt
+          sha256sum rx0-* > checksums.txt
           cat checksums.txt
 
       - name: Create GitHub Release
@@ -133,5 +133,5 @@ jobs:
           prerelease: false
           generate_release_notes: true
           files: |
-            dist/px0-*
+            dist/rx0-*
             dist/checksums.txt

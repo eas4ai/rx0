@@ -19,10 +19,10 @@ impl Drop for TempDir {
     }
 }
 
-/// Unique scratch dir under the system temp dir: `px0-<tag>-<pid>-<n>`.
+/// Unique scratch dir under the system temp dir: `rx0-<tag>-<pid>-<n>`.
 pub fn tempdir(tag: &str) -> TempDir {
     let id = NEXT.fetch_add(1, Ordering::Relaxed);
-    let dir = std::env::temp_dir().join(format!("px0-{tag}-{}-{id}", std::process::id()));
+    let dir = std::env::temp_dir().join(format!("rx0-{tag}-{}-{id}", std::process::id()));
     std::fs::create_dir_all(&dir).unwrap();
     TempDir(dir)
 }

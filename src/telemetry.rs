@@ -14,22 +14,22 @@ use std::sync::{
 const DEFAULT_POSTHOG_HOST: &str = "https://us.i.posthog.com";
 const QUEUE_SIZE: usize = 128;
 
-/// Compile-time key (`PX0_POSTHOG_KEY` env at build), overridable at
+/// Compile-time key (`RX0_POSTHOG_KEY` env at build), overridable at
 /// runtime. Ports Go's `-X main.posthogKey` ldflag.
 fn api_key() -> String {
-    if let Ok(k) = std::env::var("PX0_POSTHOG_KEY") {
+    if let Ok(k) = std::env::var("RX0_POSTHOG_KEY") {
         if !k.trim().is_empty() {
             return k.trim().to_string();
         }
     }
-    option_env!("PX0_POSTHOG_KEY")
+    option_env!("RX0_POSTHOG_KEY")
         .unwrap_or("")
         .trim()
         .to_string()
 }
 
 fn posthog_host() -> String {
-    let host = std::env::var("PX0_POSTHOG_HOST").unwrap_or_default();
+    let host = std::env::var("RX0_POSTHOG_HOST").unwrap_or_default();
     let host = host.trim().trim_end_matches('/').to_string();
     if host.is_empty() {
         DEFAULT_POSTHOG_HOST.to_string()
@@ -39,7 +39,7 @@ fn posthog_host() -> String {
 }
 
 /// Mirrors Go `isOptedOut`: CLI flag, `DO_NOT_TRACK=1`, or
-/// `PX0_TELEMETRY` in {0,false,off,no}.
+/// `RX0_TELEMETRY` in {0,false,off,no}.
 pub fn is_opted_out(flag_no_telemetry: bool) -> bool {
     if flag_no_telemetry {
         return true;
@@ -48,7 +48,7 @@ pub fn is_opted_out(flag_no_telemetry: bool) -> bool {
         return true;
     }
     matches!(
-        std::env::var("PX0_TELEMETRY")
+        std::env::var("RX0_TELEMETRY")
             .unwrap_or_default()
             .trim()
             .to_lowercase()
@@ -82,13 +82,13 @@ fn random_hex(bytes: usize) -> Option<String> {
     Some(b.iter().map(|x| format!("{x:02x}")).collect())
 }
 
-/// Persistent anonymous ID in `~/.px0/anonymous_id`, ephemeral on any
+/// Persistent anonymous ID in `~/.rx0/anonymous_id`, ephemeral on any
 /// failure. Ports Go `getOrGenerateDistinctID`.
 pub fn distinct_id() -> String {
     if let Ok(home) = std::env::var("HOME") {
         if !home.is_empty() {
             let path = std::path::Path::new(&home)
-                .join(".px0")
+                .join(".rx0")
                 .join("anonymous_id");
             if let Ok(data) = std::fs::read_to_string(&path) {
                 let id = data.trim().to_string();
@@ -100,7 +100,7 @@ pub fn distinct_id() -> String {
     }
     let id = random_hex(16).unwrap_or_else(|| {
         format!(
-            "px0-{}",
+            "rx0-{}",
             std::time::SystemTime::now()
                 .duration_since(std::time::UNIX_EPOCH)
                 .map(|d| d.as_nanos())
@@ -109,7 +109,7 @@ pub fn distinct_id() -> String {
     });
     if let Ok(home) = std::env::var("HOME") {
         if !home.is_empty() {
-            let dir = std::path::Path::new(&home).join(".px0");
+            let dir = std::path::Path::new(&home).join(".rx0");
             if std::fs::create_dir_all(&dir).is_ok() {
                 let _ = std::fs::write(dir.join("anonymous_id"), &id);
             }
@@ -166,7 +166,7 @@ fn enrich(props: &mut Map<String, Value>, distinct_id: &str, session_id: &str) {
         "$session_id".to_string(),
         Value::String(session_id.to_string()),
     );
-    props.insert("$lib".to_string(), Value::String("px0".to_string()));
+    props.insert("$lib".to_string(), Value::String("rx0".to_string()));
     props.insert(
         "$lib_version".to_string(),
         Value::String(crate::VERSION.to_string()),
@@ -218,7 +218,7 @@ pub(crate) fn rfc3339_now() -> String {
 }
 
 fn send(host: &str, api_key: &str, event: &str, props: &Map<String, Value>) {
-    let debug = std::env::var("PX0_TELEMETRY_DEBUG").as_deref() == Ok("1");
+    let debug = std::env::var("RX0_TELEMETRY_DEBUG").as_deref() == Ok("1");
     let mut payload = Map::new();
     payload.insert("api_key".to_string(), Value::String(api_key.to_string()));
     payload.insert("event".to_string(), Value::String(event.to_string()));
@@ -227,7 +227,7 @@ fn send(host: &str, api_key: &str, event: &str, props: &Map<String, Value>) {
     let req = crate::update::http_agent(4)
         .post(&format!("{host}/capture/"))
         .header("Content-Type", "application/json")
-        .header("User-Agent", format!("px0/{}", crate::VERSION))
+        .header("User-Agent", format!("rx0/{}", crate::VERSION))
         .send_json(Value::Object(payload));
     match req {
         Ok(resp) => {
@@ -348,10 +348,10 @@ mod tests {
         assert!(is_opted_out(false));
         drop(_g);
         for val in ["0", "false", "off", "no"] {
-            let _g = crate::testutil::set_env(&[("PX0_TELEMETRY", val)]);
-            assert!(is_opted_out(false), "PX0_TELEMETRY={val} should opt out");
+            let _g = crate::testutil::set_env(&[("RX0_TELEMETRY", val)]);
+            assert!(is_opted_out(false), "RX0_TELEMETRY={val} should opt out");
         }
-        let _g = crate::testutil::unset_env(&["DO_NOT_TRACK", "PX0_TELEMETRY"]);
+        let _g = crate::testutil::unset_env(&["DO_NOT_TRACK", "RX0_TELEMETRY"]);
         assert!(!is_opted_out(false));
     }
 
@@ -366,7 +366,7 @@ mod tests {
     #[test]
     fn disabled_without_key() {
         let _lock = crate::testutil::ENV_LOCK.lock().unwrap();
-        let _g = crate::testutil::unset_env(&["PX0_POSTHOG_KEY"]);
+        let _g = crate::testutil::unset_env(&["RX0_POSTHOG_KEY"]);
         let tel = TelemetryService::new(false);
         assert!(!tel.enabled());
         tel.track("session_started", Map::new());
@@ -394,8 +394,8 @@ mod tests {
             8,
         );
         let _g = crate::testutil::set_env(&[
-            ("PX0_POSTHOG_KEY", "phc_test_key_xyz"),
-            ("PX0_POSTHOG_HOST", &url),
+            ("RX0_POSTHOG_KEY", "phc_test_key_xyz"),
+            ("RX0_POSTHOG_HOST", &url),
             ("HOME", home.path().to_str().unwrap()),
         ]);
 

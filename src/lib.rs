@@ -1,4 +1,4 @@
-//! px0: a fast, ultra-light code navigator served in the browser.
+//! rx0: a fast, ultra-light code navigator served in the browser.
 //!
 //! Slice 1 ports the server shell: CLI, router, embedded static assets,
 //! the path sandbox, and `/api/meta`. Later slices add index, search,

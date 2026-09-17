@@ -1,4 +1,4 @@
-//! px0: a fast, ultra-light code navigator in the browser.
+//! rx0: a fast, ultra-light code navigator in the browser.
 //!
 //! CLI mirrors the Go flags in `main.go`: same names, same defaults.
 
@@ -8,7 +8,7 @@ use std::sync::Arc;
 use clap::Parser;
 use tokio::net::TcpListener;
 
-use px0::{
+use rx0::{
     git::set_disabled as set_git_disabled,
     index::Index,
     server::{serve_until, AppState, AssetSource},
@@ -23,7 +23,7 @@ async fn shutdown_signal() {
     #[cfg(unix)]
     async fn first_signal() {
         use tokio::signal::unix::{signal, SignalKind};
-        let mut term = signal(SignalKind::terminate()).expect("px0: listen for SIGTERM");
+        let mut term = signal(SignalKind::terminate()).expect("rx0: listen for SIGTERM");
         tokio::select! {
             _ = tokio::signal::ctrl_c() => {},
             _ = term.recv() => {},
@@ -35,7 +35,7 @@ async fn shutdown_signal() {
     }
     first_signal().await;
     eprint!("\r");
-    eprintln!("px0: stopped");
+    eprintln!("rx0: stopped");
     tokio::spawn(async {
         first_signal().await;
         std::process::exit(130);
@@ -43,7 +43,7 @@ async fn shutdown_signal() {
 }
 
 /// `std` OS/arch names in Go's `GOOS/GOARCH` vocabulary, matching the
-/// `px0 <version> (<os>/<arch>)` line and release asset names.
+/// `rx0 <version> (<os>/<arch>)` line and release asset names.
 fn go_platform() -> (&'static str, &'static str) {
     let os = match std::env::consts::OS {
         "linux" => "linux",
@@ -61,7 +61,7 @@ fn go_platform() -> (&'static str, &'static str) {
 }
 
 #[derive(Parser, Debug)]
-#[command(name = "px0", about = "a code navigator", disable_version_flag = true)]
+#[command(name = "rx0", about = "a code navigator", disable_version_flag = true)]
 struct Args {
     /// Port to listen on (0 picks a free one).
     #[arg(long, default_value_t = 7777)]
@@ -87,7 +87,7 @@ struct Args {
     /// Print version and exit (shorthand).
     #[arg(short = 'v')]
     v: bool,
-    /// Check for and install the latest version of px0.
+    /// Check for and install the latest version of rx0.
     #[arg(long)]
     update: bool,
     /// Disable colour output.
@@ -152,7 +152,7 @@ fn open_browser(url: &str) {
         std::process::Command::new("xdg-open").arg(url).spawn()
     };
     if let Err(e) = result {
-        eprintln!("px0: could not open browser: {e}");
+        eprintln!("rx0: could not open browser: {e}");
     }
 }
 
@@ -162,13 +162,13 @@ async fn main() {
 
     if args.version || args.v {
         let (os, arch) = go_platform();
-        println!("px0 {VERSION} ({os}/{arch})");
+        println!("rx0 {VERSION} ({os}/{arch})");
         return;
     }
 
     if args.update {
-        if let Err(e) = px0::update::run_self_update(VERSION, &|line| println!("px0: {line}")) {
-            eprintln!("px0: {e}");
+        if let Err(e) = rx0::update::run_self_update(VERSION, &|line| println!("rx0: {line}")) {
+            eprintln!("rx0: {e}");
             std::process::exit(1);
         }
         return;
@@ -183,7 +183,7 @@ async fn main() {
             let probe = dir.join("web").join("index.html");
             if !probe.is_file() {
                 eprintln!(
-                    "px0: -dev {}: {}/web/index.html not found",
+                    "rx0: -dev {}: {}/web/index.html not found",
                     dir.display(),
                     dir.display()
                 );
@@ -199,13 +199,13 @@ async fn main() {
     set_git_disabled(args.no_git);
     // Language servers are discovered in the background, like Go's
     // `newLSPManager`, so startup stays instant.
-    let lsp = px0::lspservers::LspManager::new(root.clone(), !args.no_lsp);
+    let lsp = rx0::lspservers::LspManager::new(root.clone(), !args.no_lsp);
     // The harness choice restores from settings; a bad `-agent` stops
     // startup, like Go's fatal. `--no-agent` leaves editing out.
     let agent = if args.no_agent {
         None
     } else {
-        match px0::agent::AgentManager::new(
+        match rx0::agent::AgentManager::new(
             root.clone(),
             args.agent.as_deref().unwrap_or(""),
             Some(lsp.clone()),
@@ -213,7 +213,7 @@ async fn main() {
         ) {
             Ok(m) => Some(m),
             Err(e) => {
-                eprintln!("px0: -agent: {e}");
+                eprintln!("rx0: -agent: {e}");
                 std::process::exit(1);
             }
         }
@@ -224,14 +224,14 @@ async fn main() {
     let listener = match TcpListener::bind(&addr).await {
         Ok(l) => l,
         Err(e) => {
-            eprintln!("px0: cannot listen on {addr}: {e}");
+            eprintln!("rx0: cannot listen on {addr}: {e}");
             std::process::exit(1);
         }
     };
     let url = format!("http://{}", listener.local_addr().unwrap());
 
     if !args.quiet {
-        println!("px0 {} serving {} at {url}", VERSION, root.display());
+        println!("rx0 {} serving {} at {url}", VERSION, root.display());
     }
     if !args.no_open {
         open_browser(&url);
@@ -243,8 +243,8 @@ async fn main() {
         let quiet = args.quiet;
         let current = VERSION.to_string();
         std::thread::spawn(move || {
-            if let Some(note) = px0::update::check_daily_update(&current, quiet) {
-                eprintln!("px0: {note}");
+            if let Some(note) = rx0::update::check_daily_update(&current, quiet) {
+                eprintln!("rx0: {note}");
             }
         });
     }
@@ -268,12 +268,12 @@ async fn main() {
                 [
                     (
                         "files_bucket".to_string(),
-                        serde_json::Value::String(px0::telemetry::files_bucket(n).to_string()),
+                        serde_json::Value::String(rx0::telemetry::files_bucket(n).to_string()),
                     ),
                     ("index_ms".to_string(), serde_json::Value::from(ms)),
                     (
                         "has_git".to_string(),
-                        serde_json::Value::Bool(px0::git::git_available(&root_for_track)),
+                        serde_json::Value::Bool(rx0::git::git_available(&root_for_track)),
                     ),
                     (
                         "has_lsp".to_string(),
@@ -294,7 +294,7 @@ async fn main() {
         agent: agent.clone(),
     };
     if args.verbose {
-        eprintln!("px0: listening on {url}");
+        eprintln!("rx0: listening on {url}");
     }
     // Go drains the server on SIGINT/SIGTERM (`srv.Shutdown`), then closes
     // children and reports "interrupted" with exit 130. `serve_until`
@@ -314,7 +314,7 @@ async fn main() {
     }
     telemetry.close("normal");
     if let Err(e) = serve_result {
-        eprintln!("px0: server error: {e}");
+        eprintln!("rx0: server error: {e}");
         std::process::exit(1);
     }
 }

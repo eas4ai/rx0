@@ -1,4 +1,4 @@
-//! Self-update: daily GitHub release check plus `px0 --update`.
+//! Self-update: daily GitHub release check plus `rx0 --update`.
 //!
 //! Ports `update.go`: the same state file, exact-match asset names in Go
 //! `GOOS/GOARCH` vocabulary, `checksums.txt` verification, and the
@@ -6,7 +6,7 @@
 
 use std::path::PathBuf;
 
-pub const DEFAULT_REPO: &str = "eas4ai/px0-rust";
+pub const DEFAULT_REPO: &str = "eas4ai/rx0";
 /// Minimum age of the state file before we check again. Ports Go
 /// `updateCheckPeriod` (24 h).
 pub const UPDATE_CHECK_PERIOD_SECS: i64 = 24 * 3600;
@@ -20,9 +20,9 @@ pub(crate) fn http_agent(timeout_secs: u64) -> ureq::Agent {
         .new_agent()
 }
 
-/// `PX0_REPO` override, else the default. Ports Go `getRepoName`.
+/// `RX0_REPO` override, else the default. Ports Go `getRepoName`.
 pub fn repo_name() -> String {
-    let r = std::env::var("PX0_REPO").unwrap_or_default();
+    let r = std::env::var("RX0_REPO").unwrap_or_default();
     if r.trim().is_empty() {
         DEFAULT_REPO.to_string()
     } else {
@@ -30,18 +30,18 @@ pub fn repo_name() -> String {
     }
 }
 
-/// `XDG_STATE_HOME/px0/update_check.json`, else
-/// `~/.px0/update_check.json`, else the temp dir. Ports Go
+/// `XDG_STATE_HOME/rx0/update_check.json`, else
+/// `~/.rx0/update_check.json`, else the temp dir. Ports Go
 /// `stateFilePath`.
 pub fn state_file_path() -> PathBuf {
     if let Ok(xdg) = std::env::var("XDG_STATE_HOME") {
         if !xdg.is_empty() {
-            return PathBuf::from(xdg).join("px0").join("update_check.json");
+            return PathBuf::from(xdg).join("rx0").join("update_check.json");
         }
     }
     match std::env::var("HOME") {
-        Ok(home) if !home.is_empty() => PathBuf::from(home).join(".px0").join("update_check.json"),
-        _ => std::env::temp_dir().join("px0_update_check.json"),
+        Ok(home) if !home.is_empty() => PathBuf::from(home).join(".rx0").join("update_check.json"),
+        _ => std::env::temp_dir().join("rx0_update_check.json"),
     }
 }
 
@@ -124,7 +124,7 @@ pub fn go_arch() -> &'static str {
 /// `expectedAsset` in `runSelfUpdate`.
 pub fn expected_asset_name(version_no_v: &str) -> String {
     let ext = if cfg!(windows) { ".exe" } else { "" };
-    format!("px0-{version_no_v}-{}-{}{ext}", go_os(), go_arch())
+    format!("rx0-{version_no_v}-{}-{}{ext}", go_os(), go_arch())
 }
 
 #[derive(Clone, Debug, serde::Serialize, serde::Deserialize)]
@@ -142,11 +142,11 @@ pub struct GithubRelease {
     pub assets: Vec<GithubAsset>,
 }
 
-/// Query the GitHub API (or `PX0_UPDATE_URL`) for the latest release.
-/// Ports Go `fetchLatestRelease`: 5 s client, `px0-updater` agent, the
+/// Query the GitHub API (or `RX0_UPDATE_URL`) for the latest release.
+/// Ports Go `fetchLatestRelease`: 5 s client, `rx0-updater` agent, the
 /// 404 "no published releases" message, and `HTTP %d from %s` otherwise.
 pub fn fetch_latest_release(repo: &str) -> Result<GithubRelease, String> {
-    let api_url = std::env::var("PX0_UPDATE_URL").unwrap_or_default();
+    let api_url = std::env::var("RX0_UPDATE_URL").unwrap_or_default();
     let api_url = if api_url.is_empty() {
         format!("https://api.github.com/repos/{repo}/releases/latest")
     } else {
@@ -154,7 +154,7 @@ pub fn fetch_latest_release(repo: &str) -> Result<GithubRelease, String> {
     };
     let resp = http_agent(5)
         .get(&api_url)
-        .header("User-Agent", "px0-updater")
+        .header("User-Agent", "rx0-updater")
         .header("Accept", "application/vnd.github.v3+json")
         .call()
         .map_err(|e| format_github_error(&e, &api_url, repo))?;
@@ -187,7 +187,7 @@ fn format_github_error(e: &ureq::Error, api_url: &str, repo: &str) -> String {
 pub fn download_asset(url: &str) -> Result<Vec<u8>, String> {
     let mut resp = http_agent(60)
         .get(url)
-        .header("User-Agent", "px0-updater")
+        .header("User-Agent", "rx0-updater")
         .call()
         .map_err(|e| match e {
             ureq::Error::StatusCode(code) => format!("HTTP {code} from {url}"),
@@ -367,7 +367,7 @@ pub fn check_daily_update(current_version: &str, quiet: bool) -> Option<String> 
 
 fn update_notification(latest_ver: &str, current_version: &str) -> String {
     format!(
-        "a new version of px0 (v{latest_ver}) is available (current: v{current_version}): run 'px0 --update' to upgrade"
+        "a new version of rx0 (v{latest_ver}) is available (current: v{current_version}): run 'rx0 --update' to upgrade"
     )
 }
 
@@ -402,7 +402,7 @@ pub fn copy_or_move(src: &std::path::Path, dst: &std::path::Path) -> Result<(), 
     let dir = dst
         .parent()
         .ok_or_else(|| format!("no parent for {}", dst.display()))?;
-    let tmp = dir.join(format!(".px0-replace-{}", std::process::id()));
+    let tmp = dir.join(format!(".rx0-replace-{}", std::process::id()));
     std::fs::copy(src, &tmp).map_err(|e| e.to_string())?;
     #[cfg(unix)]
     {
@@ -415,7 +415,7 @@ pub fn copy_or_move(src: &std::path::Path, dst: &std::path::Path) -> Result<(), 
     })
 }
 
-/// Implement `px0 --update`. Ports Go `runSelfUpdate`: exact-match
+/// Implement `rx0 --update`. Ports Go `runSelfUpdate`: exact-match
 /// asset, mandatory `checksums.txt`, staged download beside the running
 /// binary, `chmod +x`, a `-version` smoke run, then the atomic swap
 /// (Windows: `.old` shuffle). Progress lines go to `narrate`.
@@ -444,7 +444,7 @@ pub fn run_self_update_at(
         .unwrap_or(&rel.tag_name)
         .to_string();
     if compare_semver(&latest_ver, current_ver) <= 0 {
-        narrate(&format!("px0 is already up to date (v{current_ver})"));
+        narrate(&format!("rx0 is already up to date (v{current_ver})"));
         return Ok(());
     }
     narrate(&format!(
@@ -460,19 +460,19 @@ pub fn run_self_update_at(
     let dir = exec_path
         .parent()
         .ok_or_else(|| "no parent for executable".to_string())?;
-    let tmp_path = dir.join(format!(".px0-update-{}", std::process::id()));
+    let tmp_path = dir.join(format!(".rx0-update-{}", std::process::id()));
     let data = download_verified_asset(&download_url, &checksum_url, &asset_name)
         .map_err(|e| format!("verify downloaded update: {e}"))?;
     // A permission failure beside the binary mirrors Go's sudo hint.
     if let Err(e) = std::fs::write(&tmp_path, &data) {
         if e.kind() == std::io::ErrorKind::PermissionDenied {
             return Err(format!(
-                "permission denied writing to {}. Try running with 'sudo px0 --update'",
+                "permission denied writing to {}. Try running with 'sudo rx0 --update'",
                 dir.display()
             ));
         }
         // Temp-dir fallback, as in Go.
-        let fallback = std::env::temp_dir().join(format!(".px0-update-{}", std::process::id()));
+        let fallback = std::env::temp_dir().join(format!(".rx0-update-{}", std::process::id()));
         std::fs::write(&fallback, &data)
             .map_err(|e| format!("could not create temporary file: {e}"))?;
         std::fs::rename(&fallback, &tmp_path)
@@ -508,7 +508,7 @@ pub fn run_self_update_at(
         copy_or_move(&tmp_path, &exec_path).map_err(|e| {
             if e.contains("permission") || e.contains("Permission") {
                 format!(
-                    "permission denied replacing {}. Try running with 'sudo px0 --update'",
+                    "permission denied replacing {}. Try running with 'sudo rx0 --update'",
                     exec_path.display()
                 )
             } else {
@@ -521,7 +521,7 @@ pub fn run_self_update_at(
         latest_ver: latest_ver.clone(),
     });
     narrate(&format!(
-        "px0 successfully updated to v{latest_ver} at {}",
+        "rx0 successfully updated to v{latest_ver} at {}",
         exec_path.display()
     ));
     Ok(())
@@ -567,13 +567,13 @@ mod tests {
         assert_eq!(
             name,
             format!(
-                "px0-0.2.0-{}-{}{}",
+                "rx0-0.2.0-{}-{}{}",
                 go_os(),
                 go_arch(),
                 if cfg!(windows) { ".exe" } else { "" }
             )
         );
-        assert!(name.starts_with("px0-0.2.0-"));
+        assert!(name.starts_with("rx0-0.2.0-"));
     }
 
     #[test]
@@ -581,7 +581,7 @@ mod tests {
         let _lock = crate::testutil::ENV_LOCK.lock().unwrap();
         let dir = crate::testutil::tempdir("upd-state");
         let _g = crate::testutil::set_env(&[("XDG_STATE_HOME", dir.path().to_str().unwrap())]);
-        assert!(std::fs::metadata(dir.path().join("px0").join("update_check.json")).is_err());
+        assert!(std::fs::metadata(dir.path().join("rx0").join("update_check.json")).is_err());
         write_update_state(&UpdateState {
             last_checked: "2026-09-17T00:00:00Z".to_string(),
             latest_ver: "0.2.0".to_string(),
@@ -599,28 +599,28 @@ mod tests {
         let asset = expected_asset_name("0.2.0");
         let body = serde_json::json!({
             "tag_name": "v0.2.0",
-            "name": "px0 v0.2.0",
-            "assets": [{"name": asset, "browser_download_url": "https://example.com/download/px0"}],
+            "name": "rx0 v0.2.0",
+            "assets": [{"name": asset, "browser_download_url": "https://example.com/download/rx0"}],
         });
         let payload = serde_json::to_vec(&body).unwrap();
         let url = crate::testutil::stub_server(
             move |_path, _body| (200, "application/json", payload.clone()),
             4,
         );
-        let _g = crate::testutil::set_env(&[("PX0_UPDATE_URL", &url)]);
+        let _g = crate::testutil::set_env(&[("RX0_UPDATE_URL", &url)]);
         let rel = fetch_latest_release("test/repo").expect("fetch must succeed");
         assert_eq!(rel.tag_name, "v0.2.0");
         assert_eq!(rel.assets.len(), 1);
         assert_eq!(rel.assets[0].name, asset);
         let (dl, _) = asset_download_url(&rel, "test/repo", &asset);
-        assert_eq!(dl, "https://example.com/download/px0");
+        assert_eq!(dl, "https://example.com/download/rx0");
     }
 
     /// Ports Go `TestDownloadVerifiedAsset` plus the mismatch rejection.
     #[test]
     fn verified_download_accepts_and_rejects() {
         let _lock = crate::testutil::ENV_LOCK.lock().unwrap();
-        let asset = "px0-0.2.0-linux-amd64".to_string();
+        let asset = "rx0-0.2.0-linux-amd64".to_string();
         let binary = b"test binary".to_vec();
         let digest = sha256_hex(&binary);
         let serve_asset = asset.clone();
@@ -674,7 +674,7 @@ mod tests {
 
     #[test]
     fn checksum_rejects_missing_and_malformed() {
-        let asset = "px0-0.2.0-linux-amd64";
+        let asset = "rx0-0.2.0-linux-amd64";
         assert!(checksum_for(format!("{:064x}  other-asset\n", 0).as_bytes(), asset).is_err());
         assert!(checksum_for(format!("not-a-sha256  {asset}\n").as_bytes(), asset).is_err());
         let good = format!("{:064x}  *./{asset}\n", 0xa5a5);

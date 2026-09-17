@@ -950,26 +950,6 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "bd348ff538bc9caeda7ee8cad2d1d48236a1f443c1fa3913c6a02fe0043b1dd3"
 
 [[package]]
-name = "px0"
-version = "0.1.5"
-dependencies = [
- "axum",
- "clap",
- "getrandom 0.3.4",
- "libc",
- "pulldown-cmark",
- "regex",
- "rust-embed",
- "serde",
- "serde_json",
- "sha2 0.10.9",
- "syntect",
- "tokio",
- "tower-http",
- "ureq",
-]
-
-[[package]]
 name = "quote"
 version = "1.0.47"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -1104,6 +1084,26 @@ dependencies = [
  "ring",
  "rustls-pki-types",
  "untrusted",
+]
+
+[[package]]
+name = "rx0"
+version = "0.1.5"
+dependencies = [
+ "axum",
+ "clap",
+ "getrandom 0.3.4",
+ "libc",
+ "pulldown-cmark",
+ "regex",
+ "rust-embed",
+ "serde",
+ "serde_json",
+ "sha2 0.10.9",
+ "syntect",
+ "tokio",
+ "tower-http",
+ "ureq",
 ]
 
 [[package]]

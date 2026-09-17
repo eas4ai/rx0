@@ -1,7 +1,7 @@
-//! Editing through a coding harness. px0 never authors a change itself:
+//! Editing through a coding harness. rx0 never authors a change itself:
 //! it composes an instruction anchored to a line range, hands it to a
 //! harness already installed on this machine, and reloads whatever moved
-//! once that harness exits. The harness edits; px0 stays the reader that
+//! once that harness exits. The harness edits; rx0 stays the reader that
 //! knows exactly when to look again.
 //!
 //! Ports `agent.go`. Harnesses are discovered the same way language
@@ -21,7 +21,7 @@ pub const AGENT_LOG_BYTES: usize = 32 << 10;
 
 // ---------------------------------------------------------------- presets
 
-/// A harness px0 knows and the argv that runs it headless. Each of
+/// A harness rx0 knows and the argv that runs it headless. Each of
 /// these starts an interactive session by default and would sit forever
 /// waiting for approval, so every preset carries the flag that turns
 /// that off and the one that lets it apply edits without asking.
@@ -448,7 +448,7 @@ pub struct AgentJob {
     pub stderr: String,
     pub changed: Vec<String>,
     pub ms: i64,
-    /// False outside a git repository, where px0 cannot tell which
+    /// False outside a git repository, where rx0 cannot tell which
     /// files a harness touched. An empty Changed then means "unknown",
     /// not "nothing", and the client reloads regardless.
     pub tracked: bool,
@@ -620,7 +620,7 @@ impl AgentManager {
             let inner = self.inner.lock().unwrap();
             if inner.pinned {
                 return Err(AgentError::Other(
-                    "px0 was started with -agent, so the harness is fixed for this run".to_string(),
+                    "rx0 was started with -agent, so the harness is fixed for this run".to_string(),
                 ));
             }
             if inner
@@ -671,7 +671,7 @@ impl AgentManager {
         .map_err(AgentError::Other)
     }
 
-    /// Every harness px0 knows and whether it is installed right now,
+    /// Every harness rx0 knows and whether it is installed right now,
     /// so a tool installed since startup shows up without a restart.
     /// Ports Go `Detect`.
     pub fn detect(&self) -> Vec<AgentHarness> {
@@ -1233,7 +1233,7 @@ mod tests {
         assert!(AgentManager::new(root.path().to_path_buf(), "echo hello", None, true).is_err());
         assert!(AgentManager::new(
             root.path().to_path_buf(),
-            "px0-not-a-real-binary {prompt}",
+            "rx0-not-a-real-binary {prompt}",
             None,
             true
         )
@@ -1284,12 +1284,12 @@ mod tests {
         let (cfg, _lock, _env) = isolate();
         let root = crate::testutil::tempdir("agentroot");
         let m = AgentManager::new(root.path().to_path_buf(), "", None, true).unwrap();
-        assert!(m.select("px0-not-a-real-binary", None).is_err());
+        assert!(m.select("rx0-not-a-real-binary", None).is_err());
         // echo stands in for a harness binary on every machine.
         m.select("echo {prompt}", None).unwrap();
         assert_eq!(m.name(), "echo");
 
-        assert!(cfg.path().join("px0").join("settings.json").exists());
+        assert!(cfg.path().join("rx0").join("settings.json").exists());
         assert!(!root.path().join("settings.json").exists());
 
         let restored = AgentManager::new(root.path().to_path_buf(), "", None, true).unwrap();

@@ -9,8 +9,8 @@ use std::time::Duration;
 
 use tokio::io::{AsyncReadExt, AsyncWriteExt};
 
-use px0::index::Index;
-use px0::server::{build_router, AppState, AssetSource};
+use rx0::index::Index;
+use rx0::server::{build_router, AppState, AssetSource};
 
 fn start_server() -> std::net::SocketAddr {
     start_server_at(PathBuf::from(env!("CARGO_MANIFEST_DIR")))
@@ -27,7 +27,7 @@ fn start_server_at(root: PathBuf) -> std::net::SocketAddr {
         root: root.clone(),
         assets: AssetSource::Embedded,
         index,
-        lsp: px0::lspservers::LspManager::new(root, false),
+        lsp: rx0::lspservers::LspManager::new(root, false),
         agent: None,
     };
     tokio::spawn(async move {
@@ -122,7 +122,7 @@ async fn meta_reports_root_and_version() {
     let meta: serde_json::Value = serde_json::from_slice(&body).unwrap();
     assert_eq!(meta["version"], env!("CARGO_PKG_VERSION"));
     assert_eq!(meta["ready"], true);
-    assert!(meta["root"].as_str().unwrap().ends_with("px0-rust"));
+    assert!(meta["root"].as_str().unwrap().ends_with("rx0"));
     assert!(meta.get("name").is_some());
     assert!(meta["files"].as_u64().unwrap() > 0);
     assert!(meta.get("indexMs").is_some());
@@ -370,7 +370,7 @@ mod scratch {
     }
     pub fn create(tag: &str) -> Guard {
         let id = NEXT.fetch_add(1, Ordering::Relaxed);
-        let dir = std::env::temp_dir().join(format!("px0-{tag}-{}-{id}", std::process::id()));
+        let dir = std::env::temp_dir().join(format!("rx0-{tag}-{}-{id}", std::process::id()));
         std::fs::create_dir_all(&dir).unwrap();
         Guard(dir)
     }
@@ -638,12 +638,12 @@ fn start_agent_server(root: &Path, spec: &str) -> std::net::SocketAddr {
     let listener = tokio::net::TcpListener::from_std(listener).unwrap();
     let index = std::sync::Arc::new(Index::new(root.to_path_buf()));
     index.build();
-    let agent = px0::agent::AgentManager::new(root.to_path_buf(), spec, None, true).unwrap();
+    let agent = rx0::agent::AgentManager::new(root.to_path_buf(), spec, None, true).unwrap();
     let state = AppState {
         root: root.to_path_buf(),
         assets: AssetSource::Embedded,
         index,
-        lsp: px0::lspservers::LspManager::new(root.to_path_buf(), false),
+        lsp: rx0::lspservers::LspManager::new(root.to_path_buf(), false),
         agent: Some(agent),
     };
     tokio::spawn(async move {

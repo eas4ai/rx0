@@ -430,7 +430,7 @@ mod tests {
         for (rel, dir) in [
             (".git/config", false),
             ("node_modules/x.js", false),
-            ("target/debug/px0", false),
+            ("target/debug/rx0", false),
             ("a.pyc", false),
             ("pkg/yarn.lock", false),
         ] {

@@ -1,4 +1,4 @@
-//! Per-user preferences in `~/.px0/settings.json`, never in a workspace.
+//! Per-user preferences in `~/.rx0/settings.json`, never in a workspace.
 //!
 //! Ports `settings.go`: the typed settings bridge (`agent` ↔
 //! `agent.harness`, `models` ↔ `agent.models`), the verbatim settings
@@ -94,18 +94,18 @@ pub struct Settings {
     pub telemetry_enabled: Option<bool>,
 }
 
-/// Honour the XDG location when set, else `~/.px0`. Ports Go
+/// Honour the XDG location when set, else `~/.rx0`. Ports Go
 /// `settingsPath` (mirrors `stateFilePath` in update.go).
 pub fn settings_path() -> Option<PathBuf> {
     if let Ok(xdg) = std::env::var("XDG_CONFIG_HOME") {
         if !xdg.is_empty() {
-            return Some(PathBuf::from(xdg).join("px0").join("settings.json"));
+            return Some(PathBuf::from(xdg).join("rx0").join("settings.json"));
         }
     }
     std::env::var("HOME")
         .ok()
         .filter(|h| !h.is_empty())
-        .map(|h| PathBuf::from(h).join(".px0").join("settings.json"))
+        .map(|h| PathBuf::from(h).join(".rx0").join("settings.json"))
 }
 
 #[derive(Clone, Debug, Serialize)]
@@ -162,7 +162,7 @@ pub fn settings_schema() -> Vec<SchemaItem> {
     SchemaItem { key: "agent.harness", title: "Coding Harness", description: "Coding agent harness invoked for code edits (e.g. claude, gemini, cursor-agent, agy, opencode, codex, aider, goose).", category: "Agent / AI", kind: "string", default: serde_json::json!(""), options: None, min: None, max: None, step: None },
     SchemaItem { key: "agent.timeoutSeconds", title: "Agent Timeout (Seconds)", description: "Controls the maximum execution time in seconds for agent edits before canceling.", category: "Agent / AI", kind: "number", default: serde_json::json!(120), options: None, min: Some(10.0), max: Some(600.0), step: Some(10.0) },
     SchemaItem { key: "agent.autoAcceptEdits", title: "Auto Accept Agent Edits", description: "Controls whether agent-generated code diffs are accepted without manual confirmation.", category: "Agent / AI", kind: "boolean", default: serde_json::json!(false), options: None, min: None, max: None, step: None },
-    SchemaItem { key: "telemetry.enabled", title: "Telemetry", description: "Enable anonymous usage metrics to help improve px0.", category: "Security & Privacy", kind: "boolean", default: serde_json::json!(true), options: None, min: None, max: None, step: None },
+    SchemaItem { key: "telemetry.enabled", title: "Telemetry", description: "Enable anonymous usage metrics to help improve rx0.", category: "Security & Privacy", kind: "boolean", default: serde_json::json!(true), options: None, min: None, max: None, step: None },
     ]
 }
 
@@ -391,7 +391,7 @@ mod tests {
     use super::*;
     use serde_json::json;
 
-    /// Isolated `~/.px0`: point both lookup roots at a temp dir while
+    /// Isolated `~/.rx0`: point both lookup roots at a temp dir while
     /// holding the env lock. Returns the dir and guards (drop order:
     /// env first, then dir removal — declare dir first).
     fn isolate() -> (

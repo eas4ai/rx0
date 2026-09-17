@@ -504,7 +504,7 @@ impl LspClient {
         let params = serde_json::json!({
             "processId": std::process::id(),
             "rootUri": root_uri,
-            "clientInfo": {"name": "px0", "version": crate::VERSION},
+            "clientInfo": {"name": "rx0", "version": crate::VERSION},
             "workspaceFolders": [{"uri": root_uri, "name": self.root.file_name().map(|n| n.to_string_lossy().into_owned()).unwrap_or_default()}],
             "capabilities": {
                 "general": {"positionEncodings": ["utf-8", "utf-16"]},
@@ -814,7 +814,7 @@ mod tests {
         assert_eq!(req.id, serde_json::json!(1));
         assert_eq!(
             req.params["clientInfo"],
-            serde_json::json!({"name": "px0", "version": crate::VERSION})
+            serde_json::json!({"name": "rx0", "version": crate::VERSION})
         );
         driver.write_msg(&serde_json::json!({
             "jsonrpc": "2.0", "id": 1,

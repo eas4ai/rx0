@@ -1,6 +1,6 @@
 //! Setting up a language server from the UI: report what is missing
 //! for a file, run a known installer for it, and pick the result up
-//! without restarting px0.
+//! without restarting rx0.
 //!
 //! Ports `lspsetup.go` (minus the HTTP layer, which lives in
 //! `server.rs` next to the other handlers).
@@ -167,7 +167,7 @@ impl LspManager {
         s
     }
 
-    /// Names the language of rel when px0 knows servers for it but none
+    /// Names the language of rel when rx0 knows servers for it but none
     /// is installed, empty otherwise. Ports Go `MissingLang`.
     pub fn missing_lang(&self, rel: &str) -> String {
         if !self.is_enabled() || !self.is_discovered() || self.def_for(rel).is_some() {
@@ -180,7 +180,7 @@ impl LspManager {
     }
 
     /// Look for servers again and forget earlier start failures, so a
-    /// server installed while px0 runs is used on the next request.
+    /// server installed while rx0 runs is used on the next request.
     /// Ports Go `Rescan`.
     pub fn rescan(self: &Arc<Self>) {
         if !self.is_enabled() {
@@ -210,7 +210,7 @@ impl LspManager {
             .ok_or_else(|| format!("{name} has no install option {option} on {}", current_os()))?;
         if !opt.auto {
             return Err(format!(
-                "px0 does not run {:?}; run it in a terminal",
+                "rx0 does not run {:?}; run it in a terminal",
                 opt.cmd.join(" ")
             ));
         }

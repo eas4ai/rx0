@@ -99,7 +99,7 @@ pub fn visual_width(line: &str) -> usize {
     n
 }
 
-/// Map a syntect scope stack onto px0's short class. Comment and string
+/// Map a syntect scope stack onto rx0's short class. Comment and string
 /// states win wherever they appear (delimiters belong to the construct);
 /// otherwise the innermost specific scope decides. Approximate by design:
 /// syntect grammars are not Chroma lexers.
@@ -697,7 +697,7 @@ mod tests {
 
     #[test]
     fn cache_memoises_and_evicts() {
-        let dir = std::env::temp_dir().join(format!("px0-hl-{}", std::process::id()));
+        let dir = std::env::temp_dir().join(format!("rx0-hl-{}", std::process::id()));
         std::fs::create_dir_all(&dir).unwrap();
         let file = dir.join("a.go");
         std::fs::write(&file, "package a\n").unwrap();

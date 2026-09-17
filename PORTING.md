@@ -1,7 +1,7 @@
-# px0 Rust port — working notes
+# rx0 Rust port — working notes
 
 Source: `../px0` (Go, `VERSION 0.1.5`). Target: this crate, plain Rust
-(axum + tokio + serde_json + rust-embed). No Suprnova: px0 uses none of
+(axum + tokio + serde_json + rust-embed). No Suprnova: rx0 uses none of
 its differentiators (no DB, ORM, auth, queues, Inertia), and a young git
 dependency adds provenance risk for zero gain.
 
@@ -165,11 +165,11 @@ models↔`agent.models` bridges, null-deletes, `writeSettings`, and the
 raw-text save. `src/metrics.rs` ports `metrics.go` (`/proc` RSS/CPU/
 threads with the 200ms CPU gate). `src/telemetry.rs` ports
 `telemetry.go` (PostHog queue + worker, opt-outs, buckets,
-`~/.px0/anonymous_id`, `session_started/ended/stopped`). `src/update.rs`
-ports `update.go` (exact `compareSemver`, `PX0_UPDATE_URL` fetch,
-`checksums.txt` verification, exact-match `px0-<ver>-<goos>-<goarch>`
+`~/.rx0/anonymous_id`, `session_started/ended/stopped`). `src/update.rs`
+ports `update.go` (exact `compareSemver`, `RX0_UPDATE_URL` fetch,
+`checksums.txt` verification, exact-match `rx0-<ver>-<goos>-<goarch>`
 assets, daily state file, atomic swap) against
-`eas4ai/px0-rust`. `GET+POST /api/settings` (with the `localPost`
+`eas4ai/rx0`. `GET+POST /api/settings` (with the `localPost`
 Origin gate), `GET /api/metrics`, meta `metrics`/`agent*`/`lspServers`
 fields, `--update` execution, background daily check, and
 `session_started` tracking are wired in `server.rs`/`main.rs`.
@@ -180,7 +180,7 @@ Divergences from Go:
   (Unchanged from slice 8; re-verified after the heading-frame cleanup.)
 - `localPost` compares the raw Origin string against Host instead of
   parsing the URL; equivalent for well-formed origins.
-- `runSelfUpdate` stages via `.px0-update-<pid>` in the binary dir and
+- `runSelfUpdate` stages via `.rx0-update-<pid>` in the binary dir and
   falls back to rename-into-place rather than Go's `CreateTemp` names;
   same atomicity, different temp names.
 
