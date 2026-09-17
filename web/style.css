@@ -786,6 +786,17 @@ kbd {
 
 @keyframes pulse { 0%, 100% { opacity: 1; transform: scale(1); } 50% { opacity: .4; transform: scale(.85); } }
 
+/* ---------- terminal drawer ---------- */
+#drawer { flex: none; height: 240px; display: flex; flex-direction: column; background: var(--bg); border-top: 1px solid var(--line); min-height: 0; }
+body.drawer-hidden #drawer { display: none; }
+#drawer-resizer { flex: none; height: 5px; cursor: ns-resize; }
+#drawer-resizer:hover { background: var(--bg4); }
+#drawer-head { flex: none; display: flex; align-items: center; gap: 8px; padding: 2px 10px; font: 11px var(--mono); color: var(--faint); user-select: none; }
+#drawer-head .grow { flex: 1; }
+#term-body { flex: 1; min-height: 0; padding: 4px 8px; }
+#term-body .xterm { height: 100%; padding: 0; }
+#term-body .xterm-viewport { overflow-y: auto; }
+
 /* ---------- status ---------- */
 #status { height: 24px; flex: none; display: flex; align-items: center; gap: 12px; padding: 0 10px; background: var(--bg2); border-top: 1px solid var(--line); font: 11px var(--mono); color: var(--faint); user-select: none; white-space: nowrap; overflow: hidden; }
 /* Nothing shrinks or wraps: an overflowing bar is what tells fitStatus() to shed detail. */

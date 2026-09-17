@@ -27,8 +27,9 @@ fn start_server_at(root: PathBuf) -> std::net::SocketAddr {
         root: root.clone(),
         assets: AssetSource::Embedded,
         index,
-        lsp: rx0::lspservers::LspManager::new(root, false),
+        lsp: rx0::lspservers::LspManager::new(root.clone(), false),
         agent: None,
+        terminal: std::sync::Arc::new(rx0::terminal::TerminalManager::new(root)),
     };
     tokio::spawn(async move {
         axum::serve(listener, build_router(state)).await.unwrap();
@@ -645,6 +646,7 @@ fn start_agent_server(root: &Path, spec: &str) -> std::net::SocketAddr {
         index,
         lsp: rx0::lspservers::LspManager::new(root.to_path_buf(), false),
         agent: Some(agent),
+        terminal: std::sync::Arc::new(rx0::terminal::TerminalManager::new(root.to_path_buf())),
     };
     tokio::spawn(async move {
         axum::serve(listener, build_router(state)).await.unwrap();
@@ -1116,4 +1118,81 @@ async fn settings_get_and_post_round_trip() {
         let _lock = SETTINGS_ENV_LOCK.lock().unwrap();
         restore_settings(saved);
     }
+}
+
+/// The terminal socket runs a real shell: bytes sent arrive back as
+/// output, a second connection attaches to the same session, and a
+/// missing Origin is refused at the gate.
+#[tokio::test]
+async fn terminal_ws_shell_round_trip() {
+    use futures_util::{SinkExt, StreamExt};
+    let addr = start_server();
+    let origin = format!("http://{addr}");
+    let connect = || {
+        let uri: axum::http::Uri = format!("ws://{addr}/api/terminal?rows=24&cols=80")
+            .parse()
+            .unwrap();
+        let builder = tokio_tungstenite::tungstenite::ClientRequestBuilder::new(uri)
+            .with_header("Host", addr.to_string())
+            .with_header("Origin", origin.clone());
+        tokio_tungstenite::connect_async(builder)
+    };
+
+    let (mut ws, _) = connect().await.expect("ws upgrade");
+    ws.send(tokio_tungstenite::tungstenite::Message::Binary(
+        tokio_tungstenite::tungstenite::Bytes::from_static(b"echo ws-hello\n"),
+    ))
+    .await
+    .unwrap();
+    let mut seen = Vec::new();
+    tokio::time::timeout(Duration::from_secs(15), async {
+        while let Some(msg) = ws.next().await {
+            if let Ok(tokio_tungstenite::tungstenite::Message::Binary(b)) = msg {
+                seen.extend_from_slice(&b);
+                if String::from_utf8_lossy(&seen).contains("ws-hello") {
+                    break;
+                }
+            }
+        }
+    })
+    .await
+    .expect("echo round trip");
+    assert!(String::from_utf8_lossy(&seen).contains("ws-hello"));
+
+    // Resize frame is accepted (no error, socket stays open).
+    ws.send(tokio_tungstenite::tungstenite::Message::Text(
+        "{\"resize\":[30,100]}".into(),
+    ))
+    .await
+    .unwrap();
+    ws.close(None).await.unwrap();
+
+    // A second socket attaches to the same still-running session.
+    let (mut ws2, _) = connect().await.expect("ws reattach");
+    ws2.send(tokio_tungstenite::tungstenite::Message::Binary(
+        tokio_tungstenite::tungstenite::Bytes::from_static(b"echo ws-again\n"),
+    ))
+    .await
+    .unwrap();
+    let mut seen2 = Vec::new();
+    tokio::time::timeout(Duration::from_secs(15), async {
+        while let Some(msg) = ws2.next().await {
+            if let Ok(tokio_tungstenite::tungstenite::Message::Binary(b)) = msg {
+                seen2.extend_from_slice(&b);
+                if String::from_utf8_lossy(&seen2).contains("ws-again") {
+                    break;
+                }
+            }
+        }
+    })
+    .await
+    .expect("reattach round trip");
+    ws2.close(None).await.unwrap();
+
+    // No Origin: the handshake is refused.
+    assert!(
+        tokio_tungstenite::connect_async(format!("ws://{addr}/api/terminal"))
+            .await
+            .is_err()
+    );
 }

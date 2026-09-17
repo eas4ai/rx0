@@ -22,6 +22,7 @@ pub mod server;
 pub mod settings;
 pub mod symbols;
 pub mod telemetry;
+pub mod terminal;
 pub mod update;
 
 #[cfg(test)]

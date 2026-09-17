@@ -18,6 +18,7 @@ import { cycleTheme } from './theme.js';
 import { previewing, togglePreview, previewKey, selectPreview } from './markdown.js';
 import { toggleDiff } from './diff.js';
 import { openSettings, closeSettings, isSettingsOpen } from './settings.js';
+import { toggleTerminal } from './terminal.js';
 
 /* Each entry lists alternative combos, written as for keyLabel in state.js so
    they show as ⌘/⌥/⇧ on a Mac and Ctrl/Alt/Shift elsewhere. Browsers keep
@@ -34,6 +35,7 @@ export const SHORTCUTS = [
   [['Alt+Shift+H'], 'Call trail (callers / callees)'],
   [['Mod+J'], 'Toggle right inspector (Symbols/Refs)'],
   [['Alt+Left', 'Alt+Right'], 'Navigate back / forward'], [['Mod+B'], 'Toggle sidebar'],
+  [['`'], 'Toggle terminal drawer'],
   [['Alt+W'], 'Close tab'], [['Alt+Shift+T'], 'Reopen closed tab'], [['Ctrl+Tab'], 'Next tab'],
   [['Alt+1…9'], 'Select tab'], [['Double click'], 'Highlight all occurrences'],
   [['Mod+A'], 'Select whole file'],
@@ -79,6 +81,7 @@ export function initShortcuts() {
     else if (act === 'md-preview') togglePreview();
     else if (act === 'palette') openPalette('command');
     else if (act === 'settings') openSettings('ui');
+    else if (act === 'terminal') toggleTerminal();
     else if (act === 'help') showHelp();
   });
 
@@ -164,6 +167,10 @@ export function initShortcuts() {
     }
 
     if (inField(document.activeElement)) return;
+
+    // Terminal drawer. After the inField guard so typing a backtick
+    // into the terminal itself (or any input) is never stolen.
+    if (!mod && !e.altKey && !e.shiftKey && e.key === '`') { e.preventDefault(); toggleTerminal(); return; }
 
     // Select all takes the open file only, never the sidebar or status bar around it.
     const plainMod = mod && !e.shiftKey && !e.altKey;

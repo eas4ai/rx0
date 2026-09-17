@@ -88,6 +88,7 @@ rx0 also checks once a day in the background without delaying startup, and print
 - **Virtualized file view**: only visible rows are mounted, so very large files scroll as cheaply as small ones.
 - **Rendered Markdown**: GFM preview with highlighted code fences. `Alt+M` switches between preview and source while preserving scroll.
 - **Settings modal**: `Mod+,` opens a VS Code-style editor with live preview and raw JSON sync, stored per-user in `~/.rx0/settings.json`, never in the repository.
+- **Terminal drawer**: a full interactive shell in a bottom drawer (`` ` ``), backed by a PTY on the server. See [Terminal drawer](#terminal-drawer).
 - **Self-contained**: a single binary embeds the UI. No Electron, no Node at runtime, no cloud calls except telemetry and update checks.
 
 ## Language servers (optional)
@@ -146,6 +147,14 @@ A failed harness reports its error inline under your instruction, with stdout an
 - Mutating requests are accepted only from rx0's own page, opened by IP address or `localhost`. Through a hostname they are refused.
 - Nothing runs until you pick a harness. `--agent` pins one for the session, and `--no-agent` turns editing off.
 
+## Terminal drawer
+
+Press `` ` `` (or the **Terminal** button in the status bar) to open a full interactive shell in a bottom drawer. The shell runs in the workspace root under a PTY, so paging, colors, and fullscreen programs like `vim` and `htop` work. Drag the divider to resize; the shell reflows to the new size.
+
+There is one session per browser window. Closing the drawer detaches without killing the shell, so reopening resumes where you left off — even after closing the tab, until the server stops and reaps it. The shell is your login shell (`$SHELL`, `powershell.exe` on Windows), with `TERM=xterm-256color` and the editor font size. Set `terminal.enabled` to `false` to hide the feature.
+
+The terminal carries the same trust as agent edits: it is gated to rx0's own page by IP or `localhost`, so keep `--host 0.0.0.0` on private networks.
+
 ## Settings (`~/.rx0/settings.json`)
 
 Open settings with `Mod+,`, the gear icon in the status bar, or the command palette (`Mod+Shift+P`, then **Preferences: Open Settings**). The graphical editor and the raw JSON stay in sync, and visual settings apply live without a reload. Any modified value shows a `Modified` badge with a one-click reset.
@@ -178,6 +187,7 @@ Key settings:
 | `search.smartCase` | `true` | `true`, `false` | Case-sensitive only when the query has uppercase |
 | `search.maxResults` | `1000` | `50`–`10000` | Cap for workspace search results |
 | `markdown.preview.open` | `true` | `true`, `false` | Open Markdown in preview by default |
+| `terminal.enabled` | `true` | `true`, `false` | Bottom-drawer terminal |
 | `lsp.enabled` | `true` | `true`, `false` | Master switch for language servers |
 | `lsp.hover.enabled` | `true` | `true`, `false` | Hover documentation cards |
 | `agent.harness` | `""` | `claude`, `gemini`, `agy`, etc. | Preferred coding harness |
@@ -206,6 +216,7 @@ Key settings:
 | `Hover` | Type signature and documentation |
 | `Alt+Left` / `Alt+Right` | Navigate back / forward |
 | `Mod+B` | Toggle the sidebar |
+| `` ` `` | Toggle the terminal drawer |
 | `Mod+J` | Toggle the right inspector (symbols and references) |
 | `Alt+Z` | Toggle word wrap |
 | `Alt+M` | Toggle Markdown preview |

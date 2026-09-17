@@ -29,6 +29,7 @@ use crate::lspservers::{lsp_deadline, warm_deadline, LspManager};
 use crate::markdown::{render_markdown, MAX_MARKDOWN_BYTES};
 use crate::search::{search, FileMatches, Match, SearchOpts};
 use crate::symbols::{outline, Symbol};
+use crate::terminal::{default_shell, TerminalManager};
 use crate::VERSION;
 
 /// Typed response envelopes. Go builds these from `map[string]any` (keys
@@ -244,6 +245,16 @@ pub struct AppState {
     pub index: Arc<Index>,
     pub lsp: Arc<LspManager>,
     pub agent: Option<Arc<AgentManager>>,
+    pub terminal: Arc<TerminalManager>,
+}
+
+/// The bottom-drawer terminal switch. Defaults on; `terminal.enabled`
+/// in settings hides the feature.
+fn terminal_enabled() -> bool {
+    crate::settings::read_merged_map()
+        .get("terminal.enabled")
+        .and_then(|v| v.as_bool())
+        .unwrap_or(true)
 }
 
 /// Resolve a client-supplied relative path inside `root`, refusing anything
@@ -444,6 +455,13 @@ fn local_post(
     if *method != axum::http::Method::POST {
         return Err((StatusCode::METHOD_NOT_ALLOWED, "POST only".to_string()));
     }
+    local_origin(headers)
+}
+
+/// The Host/Origin half of [`local_post`], reused by the terminal
+/// websocket upgrade (a GET with an `Origin` header, which browsers
+/// also send on WS handshakes).
+fn local_origin(headers: &axum::http::HeaderMap) -> Result<(), (StatusCode, String)> {
     let host = headers
         .get(axum::http::header::HOST)
         .and_then(|v| v.to_str().ok())
@@ -1027,6 +1045,102 @@ async fn handle_agent_cancel(
     Json(json!({ "cancelled": agent.cancel_job(id) })).into_response()
 }
 
+#[derive(Deserialize)]
+struct TerminalQuery {
+    #[serde(default)]
+    rows: u16,
+    #[serde(default)]
+    cols: u16,
+}
+
+/// Upgrade to the bottom-drawer terminal socket. The `local_origin`
+/// gate applies (browsers send `Origin` on WS handshakes too): only
+/// rx0's own page, by IP or localhost, may open a shell.
+async fn handle_terminal_ws(
+    headers: axum::http::HeaderMap,
+    State(state): State<AppState>,
+    Query(q): Query<TerminalQuery>,
+    ws: axum::extract::ws::WebSocketUpgrade,
+) -> Response {
+    if let Err((status, msg)) = local_origin(&headers) {
+        return err(status, msg);
+    }
+    if !terminal_enabled() {
+        return err(StatusCode::FORBIDDEN, "terminal disabled");
+    }
+    let rows = q.rows.clamp(5, 200);
+    let cols = q.cols.clamp(20, 500);
+    let term = state.terminal.clone();
+    ws.on_upgrade(move |socket| terminal_session(term, socket, rows, cols))
+}
+
+/// Decode a `{"resize":[rows,cols]}` frame. Anything else is ignored.
+fn parse_resize(t: &str) -> Option<(u16, u16)> {
+    let v: serde_json::Value = serde_json::from_str(t).ok()?;
+    let pair = v.get("resize")?.as_array()?;
+    Some((
+        pair.first()?.as_u64()? as u16,
+        pair.get(1)?.as_u64()? as u16,
+    ))
+}
+
+/// Bridge one websocket to the single shell session. Binary frames are
+/// stdin; `{"resize":[rows,cols]}` text frames reflow the PTY. Output
+/// chunks go back as binary frames. Socket close detaches only: the
+/// shell keeps running so reopening the drawer resumes it.
+async fn terminal_session(
+    term: Arc<TerminalManager>,
+    mut socket: axum::extract::ws::WebSocket,
+    rows: u16,
+    cols: u16,
+) {
+    if !term.running() {
+        let shell = default_shell();
+        if let Err(e) = term.start(&shell, &[], rows, cols) {
+            let _ = socket
+                .send(axum::extract::ws::Message::Text(format!("rx0: {e}").into()))
+                .await;
+            return;
+        }
+    } else if term.resize(rows, cols).is_err() {
+        // Session vanished between checks; the next attach starts fresh.
+    }
+    loop {
+        tokio::select! {
+            msg = socket.recv() => {
+                match msg {
+                    Some(Ok(axum::extract::ws::Message::Binary(b)))
+                        if term.write(&b).is_err() =>
+                    {
+                        break
+                    }
+                    Some(Ok(axum::extract::ws::Message::Text(t))) => {
+                        if let Some((rows, cols)) = parse_resize(&t) {
+                            if rows >= 5 && cols >= 20 {
+                                let _ = term.resize(rows.min(200), cols.min(500));
+                            }
+                        }
+                    }
+                    Some(Ok(axum::extract::ws::Message::Close(_))) | None => break,
+                    _ => {}
+                }
+            }
+            _ = tokio::time::sleep(std::time::Duration::from_millis(10)) => {
+                let mut failed = false;
+                for chunk in term.drain() {
+                    if socket.send(axum::extract::ws::Message::Binary(chunk.into())).await.is_err() {
+                        failed = true;
+                        break;
+                    }
+                }
+                if failed {
+                    break;
+                }
+            }
+        }
+    }
+}
+
 /// Shared path/line/col arguments. `col` arrives in UTF-16 code units
 /// because that is what JavaScript string offsets count. Ports Go
 /// `lspPos`.
@@ -1355,6 +1469,7 @@ pub fn build_router(state: AppState) -> Router {
         .route("/api/agent/edit", post(handle_agent_edit))
         .route("/api/agent/job", get(handle_agent_job))
         .route("/api/agent/cancel", post(handle_agent_cancel))
+        .route("/api/terminal", get(handle_terminal_ws))
         .route("/api/markdown", get(handle_markdown))
         .route("/api/reindex", get(handle_reindex).post(handle_reindex))
         .route("/api/metrics", get(handle_metrics))

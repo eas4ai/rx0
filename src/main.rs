@@ -286,12 +286,14 @@ async fn main() {
         });
     }
 
+    let terminal = std::sync::Arc::new(rx0::terminal::TerminalManager::new(root.clone()));
     let state = AppState {
         root,
         assets,
         index,
         lsp: lsp.clone(),
         agent: agent.clone(),
+        terminal,
     };
     if args.verbose {
         eprintln!("rx0: listening on {url}");

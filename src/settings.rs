@@ -163,6 +163,7 @@ pub fn settings_schema() -> Vec<SchemaItem> {
     SchemaItem { key: "agent.timeoutSeconds", title: "Agent Timeout (Seconds)", description: "Controls the maximum execution time in seconds for agent edits before canceling.", category: "Agent / AI", kind: "number", default: serde_json::json!(120), options: None, min: Some(10.0), max: Some(600.0), step: Some(10.0) },
     SchemaItem { key: "agent.autoAcceptEdits", title: "Auto Accept Agent Edits", description: "Controls whether agent-generated code diffs are accepted without manual confirmation.", category: "Agent / AI", kind: "boolean", default: serde_json::json!(false), options: None, min: None, max: None, step: None },
     SchemaItem { key: "telemetry.enabled", title: "Telemetry", description: "Enable anonymous usage metrics to help improve rx0.", category: "Security & Privacy", kind: "boolean", default: serde_json::json!(true), options: None, min: None, max: None, step: None },
+    SchemaItem { key: "terminal.enabled", title: "Terminal Drawer", description: "Show the bottom-drawer terminal backed by an interactive shell.", category: "Workbench", kind: "boolean", default: serde_json::json!(true), options: None, min: None, max: None, step: None },
     ]
 }
 

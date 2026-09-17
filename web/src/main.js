@@ -20,6 +20,7 @@ import { initDiff } from './diff.js';
 import { initAgent, applyAgentMeta, loadAgentAsync } from './agent.js';
 import { initMetrics, initStatusFit, updateMetricsDisplay, updateStatus } from './status.js';
 import { initSettings } from './settings.js';
+import { initTerminal } from './terminal.js';
 
 // Initialize all subsystems
 initRenderer();
@@ -42,6 +43,7 @@ initAgent();
 initMetrics();
 initStatusFit();
 initSettings();
+initTerminal();
 
 // Bootstrap application lifecycle
 (async function boot() {

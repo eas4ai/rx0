@@ -9,6 +9,8 @@
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:ital,wght@0,400;0,500;0,600;1,400&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="/static/style.css">
+<link rel="stylesheet" href="/static/vendor/xterm-6.0.0.css">
+<script src="/static/vendor/xterm-6.0.0.js"></script>
 <!-- Every web/themes/*.css joined by the server. See docs/internals/styling-and-themes.md. -->
 <link rel="stylesheet" href="/static/themes.css">
 </head>
@@ -170,6 +172,13 @@
     <!-- Metrics menu, opened from CPU/RAM status bar -->
     <div id="metrics-menu" role="menu" hidden></div>
 
+    <!-- Bottom Drawer: interactive terminal -->
+    <section id="drawer" aria-label="Terminal">
+      <div id="drawer-resizer" title="Drag to resize terminal"></div>
+      <header id="drawer-head"><span class="drawer-title">Terminal</span><span class="grow"></span><button id="btn-term-close" class="mini" title="Close terminal ({`})">×</button></header>
+      <div id="term-body"></div>
+    </section>
+
     <!-- Bottom Status Bar -->
     <footer id="status">
       <!-- Selection actions: replace the buttons and size below while code is selected -->
@@ -186,6 +195,7 @@
         <button class="footer-btn" data-action="goto" title="Go to Line ({Mod+G})"><span class="footer-btn-label">Go to</span><kbd class="footer-kbd" data-keys="Mod+G"></kbd></button>
         <button class="footer-btn" data-action="md-preview" title="Toggle Markdown Preview ({Alt+M})" hidden><span class="footer-btn-label">Preview</span><kbd class="footer-kbd" data-keys="Alt+M"></kbd></button>
         <button class="footer-btn" data-action="wrap" title="Toggle Word Wrap ({Alt+Z})"><span class="footer-btn-label">Wrap</span><kbd class="footer-kbd" data-keys="Alt+Z"></kbd></button>
+        <button class="footer-btn" data-action="terminal" title="Toggle Terminal ({`})"><span class="footer-btn-label">Terminal</span><kbd class="footer-kbd" data-keys="`"></kbd></button>
         <button class="footer-btn" data-action="help" title="Keyboard Shortcuts ({?})"><span class="footer-btn-label">Help</span><kbd class="footer-kbd" data-keys="?"></kbd></button>
       </div>
       <span class="status-sep"></span>

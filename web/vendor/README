@@ -1,0 +1,9 @@
+Vendored xterm.js frontend (https://github.com/xtermjs/xterm.js).
+
+- xterm-6.0.0.js: UMD build (`lib/xterm.js`), exposes `Terminal` on
+  globalThis. Loaded via <script> in index.html, not bundled.
+- xterm-6.0.0.css: terminal stylesheet, linked from index.html.
+
+To upgrade: `npm pack @xterm/xterm@<ver>` in /tmp, copy lib/xterm.js
+and css/xterm.css here under the new version, update the two
+references in web/index.html.
