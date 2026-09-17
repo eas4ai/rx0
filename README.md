@@ -1,3 +1,5 @@
+![rx0: fast, ultra-light, remote-first code navigator for the browser](assets/cover.jpg)
+
 # rx0
 
 rx0 is a fast, ultra-light, remote-first code navigator that runs in your browser. You point it at a directory, and it serves a single-page UI for navigating, searching, reviewing, and editing code through a coding agent. One static binary holds the server and the UI. No database, no account, no runtime dependencies.
