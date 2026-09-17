@@ -1,0 +1,38 @@
+name: CI
+
+on:
+  push:
+  pull_request:
+
+jobs:
+  check:
+    name: fmt, clippy, test, bundle
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+
+      - name: Setup Rust
+        uses: dtolnay/rust-toolchain@stable
+        with:
+          components: clippy, rustfmt
+
+      - name: Check formatting
+        run: cargo fmt --check
+
+      - name: Clippy (zero warnings)
+        run: cargo clippy --all-targets -- -D warnings
+
+      - name: Tests
+        run: cargo test
+
+      - name: Web bundle is fresh
+        # Plain `node` (no bun): must reproduce the committed bundle.
+        run: |
+          node ./scripts/build-web.js
+          git diff --exit-code -- web/app.js
