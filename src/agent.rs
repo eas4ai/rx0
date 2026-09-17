@@ -1225,10 +1225,33 @@ mod tests {
         (dir, lock, guard)
     }
 
+    /// `echo` stands in for a harness binary on every machine. Windows
+    /// has no echo on PATH, so fake one (detection only looks it up,
+    /// never executes it). Caller must hold ENV_LOCK via isolate().
+    fn fake_echo() -> (crate::testutil::TempDir, crate::testutil::EnvGuard) {
+        let bindir = crate::testutil::tempdir("agentbin");
+        let bin = bindir.path().join("echo");
+        std::fs::write(&bin, "").unwrap();
+        #[cfg(unix)]
+        {
+            use std::os::unix::fs::PermissionsExt;
+            std::fs::set_permissions(&bin, std::fs::Permissions::from_mode(0o755)).unwrap();
+        }
+        let old_path = std::env::var("PATH").unwrap_or_default();
+        #[cfg(windows)]
+        const PATH_SEP: char = ';';
+        #[cfg(not(windows))]
+        const PATH_SEP: char = ':';
+        let new_path = format!("{}{}{}", bindir.path().display(), PATH_SEP, old_path);
+        let guard = crate::testutil::set_env(&[("PATH", &new_path)]);
+        (bindir, guard)
+    }
+
     /// Ports Go `TestAgentSpecResolution`.
     #[test]
     fn spec_resolution_pins_and_refuses() {
         let (_dir, _lock, _env) = isolate();
+        let (_echo_dir, _echo_path) = fake_echo();
         let root = crate::testutil::tempdir("agentroot");
         assert!(AgentManager::new(root.path().to_path_buf(), "echo hello", None, true).is_err());
         assert!(AgentManager::new(
@@ -1282,6 +1305,7 @@ mod tests {
     #[test]
     fn select_persists_and_restores() {
         let (cfg, _lock, _env) = isolate();
+        let (_echo_dir, _echo_path) = fake_echo();
         let root = crate::testutil::tempdir("agentroot");
         let m = AgentManager::new(root.path().to_path_buf(), "", None, true).unwrap();
         assert!(m.select("rx0-not-a-real-binary", None).is_err());

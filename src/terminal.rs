@@ -249,7 +249,10 @@ mod tests {
 
     #[test]
     fn stdin_reaches_shell() {
-        let (sh, args) = test_shell();
+        let (sh, mut args) = test_shell();
+        // Bare -Command takes no script: "-" reads it from stdin instead.
+        #[cfg(windows)]
+        args.push("-".to_string());
         let m = TerminalManager::new(std::env::temp_dir());
         m.start(&sh, &args, 24, 80).unwrap();
         m.write(b"echo via-stdin\nexit\n").unwrap();
