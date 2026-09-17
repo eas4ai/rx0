@@ -5,7 +5,7 @@
   "type": "module",
   "description": "rx0 code navigator: browser UI build and test toolchain",
   "scripts": {
-    "build": "cp node_modules/@xterm/xterm/css/xterm.css web/vendor/xterm-6.0.0.css && rsbuild build",
+    "build": "node scripts/sync-web-vendor.js && rsbuild build",
     "test": "rstest run",
     "lint": "rslint web/src"
   },
