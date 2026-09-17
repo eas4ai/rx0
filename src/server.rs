@@ -897,7 +897,7 @@ async fn handle_agent_harnesses(State(state): State<AppState>) -> Response {
     };
     let agent = agent.clone();
     match blocking_lsp(move || agent_overview(&agent)).await {
-        Err(resp) => resp,
+        Err(resp) => *resp,
         Ok(v) => Json(v).into_response(),
     }
 }
@@ -1080,13 +1080,15 @@ fn lsp_respond(
 /// means the pool itself failed, which is a 500.
 async fn blocking_lsp<T: Send + 'static>(
     f: impl FnOnce() -> T + Send + 'static,
-) -> Result<T, Response> {
+) -> Result<T, Box<Response>> {
     match tokio::task::spawn_blocking(f).await {
         Ok(v) => Ok(v),
-        Err(_) => Err(err(
+        // Boxed: `Response` is >=128 bytes and trips
+        // `result_large_err` on newer clippy.
+        Err(_) => Err(Box::new(err(
             StatusCode::INTERNAL_SERVER_ERROR,
             "lsp task interrupted",
-        )),
+        ))),
     }
 }
 
@@ -1098,7 +1100,7 @@ async fn handle_lsp_def(State(state): State<AppState>, Query(q): Query<LspPosQue
     let lsp = state.lsp.clone();
     let rel_for_call = rel.clone();
     match blocking_lsp(move || lsp.definition(deadline, &abs, &rel_for_call, line, col)).await {
-        Err(resp) => resp,
+        Err(resp) => *resp,
         Ok(result) => lsp_respond(&state.lsp, &rel, result),
     }
 }
@@ -1111,7 +1113,7 @@ async fn handle_lsp_refs(State(state): State<AppState>, Query(q): Query<LspPosQu
     let lsp = state.lsp.clone();
     let rel_for_call = rel.clone();
     match blocking_lsp(move || lsp.references(deadline, &abs, &rel_for_call, line, col)).await {
-        Err(resp) => resp,
+        Err(resp) => *resp,
         Ok(result) => lsp_respond(&state.lsp, &rel, result),
     }
 }
@@ -1159,7 +1161,7 @@ async fn handle_lsp_calls(State(state): State<AppState>, Query(q): Query<CallsQu
     };
     let (st, server) = state.lsp.state(&rel);
     match result {
-        Err(resp) => resp,
+        Err(resp) => *resp,
         Ok(Ok(nodes)) => Json(json!({
             "nodes": nodes,
             "state": st.as_str(),
@@ -1201,7 +1203,7 @@ async fn handle_lsp_hover(State(state): State<AppState>, Query(q): Query<LspPosQ
     let result = blocking_lsp(move || lsp.hover(deadline, &abs, &rel_for_call, line, col)).await;
     let (st, server) = state.lsp.state(&rel);
     match result {
-        Err(resp) => resp,
+        Err(resp) => *resp,
         Ok(Err(e)) => Json(json!({
             "empty": true,
             "state": st.as_str(),
@@ -1234,7 +1236,7 @@ async fn handle_lsp_symbols(
     let result = blocking_lsp(move || lsp.symbols(deadline, &abs, &rel_for_call)).await;
     let (st, server) = state.lsp.state(&rel);
     match result {
-        Err(resp) => resp,
+        Err(resp) => *resp,
         Ok(Err(e)) => Json(json!({
             "symbols": Vec::<crate::symbols::Symbol>::new(),
             "state": st.as_str(),
