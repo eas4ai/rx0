@@ -45,7 +45,12 @@ fn read_rss() -> u64 {
         .nth(1)
         .and_then(|f| f.parse().ok())
         .unwrap_or(0);
+    // `sysconf` exists only on Unix; off-Unix the `/proc` read above
+    // already yielded zero pages, so the size is irrelevant there.
+    #[cfg(unix)]
     let mut page = unsafe { libc::sysconf(libc::_SC_PAGESIZE) } as u64;
+    #[cfg(not(unix))]
+    let mut page = 4096u64;
     if page == 0 {
         page = 4096;
     }
