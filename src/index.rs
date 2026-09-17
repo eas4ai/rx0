@@ -402,7 +402,20 @@ fn civil_from_days(z: i64) -> (i64, u8, u8) {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use std::os::unix::fs::symlink;
+
+    /// Best-effort symlink for the fixture. Windows creation needs
+    /// Developer Mode or SeCreateSymbolicLinkPrivilege; where it fails
+    /// the link is simply absent and the skip assertion below is vacuous.
+    #[cfg(unix)]
+    fn make_symlink(original: &Path, link: &Path) {
+        std::os::unix::fs::symlink(original, link).unwrap();
+    }
+    #[cfg(windows)]
+    fn make_symlink(original: &Path, link: &Path) {
+        let _ = std::os::windows::fs::symlink_file(original, link);
+    }
+    #[cfg(not(any(unix, windows)))]
+    fn make_symlink(_original: &Path, _link: &Path) {}
 
     /// Fixture: normal files, an ignored dir, VCS internals, a symlink,
     /// and a .gitignore with a negation.
@@ -419,7 +432,7 @@ mod tests {
         std::fs::write(root.join("node_modules/x.js"), "lib\n").unwrap();
         std::fs::write(root.join(".git/config"), "[core]\n").unwrap();
         std::fs::write(root.join(".gitignore"), "*.log\n!keep.log\n").unwrap();
-        symlink(root.join("a.go"), root.join("link.go")).unwrap();
+        make_symlink(&root.join("a.go"), &root.join("link.go"));
         (dir, root)
     }
 
