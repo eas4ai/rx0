@@ -251,10 +251,12 @@ To opt out, use `--no-telemetry`, set `DO_NOT_TRACK=1` or `RX0_TELEMETRY=0`, or 
 cargo test              # 95 lib + 27 API tests
 cargo clippy --all-targets
 cargo fmt --check
-node ./scripts/build-web.js   # rebuild web/app.js from web/src
+npm run build               # rebuild web/app.js from web/src via rsbuild
+npm test                    # frontend unit tests (rstest + happy-dom)
+npm run lint                # frontend lint (rslint)
 ```
 
-The web bundle builds with the pure-Node bundler in `scripts/build-web.js` (Node 24, no dependencies). `RX0_USE_BUN=1` selects the optional Bun fast path. CI fails if `web/app.js` drifts from `web/src`. `PORTING.md` holds the working notes from the Rust port, including the behaviors that intentionally differ from the Go original.
+The web bundle builds with rsbuild from `web/src` into the single self-contained `web/app.js` (Node 24). xterm.js arrives through npm; its stylesheet syncs into `web/vendor` at build time. CI fails if `web/app.js` drifts from `web/src`. `PORTING.md` holds the working notes from the Rust port, including the behaviors that intentionally differ from the Go original.
 
 ## Attribution
 

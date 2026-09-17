@@ -1,5 +1,5 @@
 // web/src/shortcuts.js
-import { $, $$, esc, S, doc_, isMac, MOD, LH, keyCaps } from './state.js';
+import { $, esc, S, doc_, isMac, MOD, LH, keyCaps } from './state.js';
 import { vp, sizer } from './ui.js';
 import { layout, render, paint, toggleWordWrap } from './renderer.js';
 import { updateStatus } from './status.js';

@@ -1,8 +1,9 @@
 // web/src/terminal.js
-// Bottom-drawer terminal: an xterm.js frontend (global `Terminal` from
-// the vendored UMD build) speaking to one PTY-backed shell over
-// /api/terminal. Single session: closing the drawer detaches, the
-// shell keeps running until the page or server goes away.
+// Bottom-drawer terminal: an xterm.js frontend speaking to one
+// PTY-backed shell over /api/terminal. Single session: closing the
+// drawer detaches, the shell keeps running until the page or server
+// goes away.
+import { Terminal } from '@xterm/xterm';
 import { $, S } from './state.js';
 import { showToast } from './ui.js';
 
@@ -70,12 +71,8 @@ function connect() {
 
 function ensureTerm() {
   if (term) return true;
-  if (typeof globalThis.Terminal === 'undefined') {
-    showToast('!', 'Terminal frontend missing (xterm.js did not load)');
-    return false;
-  }
   const fs = parseFloat(S.settings?.['editor.fontSize']) || 13.5;
-  term = new globalThis.Terminal({
+  term = new Terminal({
     fontSize: fs,
     fontFamily: getComputedStyle(document.documentElement).getPropertyValue('--mono') || 'monospace',
     theme: termTheme(),

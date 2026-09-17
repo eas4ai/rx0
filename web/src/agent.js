@@ -312,8 +312,8 @@ async function showPicker(session) {
   session.pickEl.hidden = false;
   session.pickEl.innerHTML = '<div class="hint">Looking for coding harnesses…</div>';
 
-  let list = S.meta?.agents || [];
-  let settingsPath = '';
+  let list;
+  let settingsPath;
   // Re-scan, so a harness installed since startup shows up without a restart.
   try {
     const j = await api('/api/agent/harnesses');

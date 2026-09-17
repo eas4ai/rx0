@@ -871,6 +871,10 @@ body.drawer-hidden #drawer { display: none; }
 }
 .sel-menu-item:hover { background: var(--bg4); color: var(--accent-fg); }
 .sel-menu-item:hover .footer-kbd { color: var(--fg); border-color: var(--accent); }
+.sel-menu-sep { height: 1px; margin: 4px 8px; background: var(--line); }
+.sel-menu-item[aria-disabled="true"] { opacity: 0.5; cursor: not-allowed; }
+.sel-menu-item[aria-disabled="true"]:hover { background: none; color: var(--fg); }
+.sel-menu-item:focus-visible { outline: 1px solid var(--accent); outline-offset: -1px; }
 #st-lsp { display: flex; align-items: center; gap: 5px; }
 #st-lsp::before {
   content: ""; width: 6px; height: 6px; border-radius: 50%;

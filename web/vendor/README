@@ -1,9 +1,8 @@
-Vendored xterm.js frontend (https://github.com/xtermjs/xterm.js).
+Vendored xterm.js stylesheet (https://github.com/xtermjs/xterm.js).
 
-- xterm-6.0.0.js: UMD build (`lib/xterm.js`), exposes `Terminal` on
-  globalThis. Loaded via <script> in index.html, not bundled.
-- xterm-6.0.0.css: terminal stylesheet, linked from index.html.
+- xterm-6.0.0.css: synced from node_modules/@xterm/xterm/css/xterm.css
+  by `npm run build`. The JS comes from the same npm package through
+  the rsbuild bundle, not from a file here.
 
-To upgrade: `npm pack @xterm/xterm@<ver>` in /tmp, copy lib/xterm.js
-and css/xterm.css here under the new version, update the two
-references in web/index.html.
+To upgrade: `npm install -D @xterm/xterm@<ver>`, rename this file to
+the new version, and update the <link> in web/index.html.

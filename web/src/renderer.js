@@ -198,7 +198,6 @@ export function toPoint({ line, col }) {
 
 /* Decorations are applied to the ~60 live rows only, never to the whole file. */
 export function decorate(first, last) {
-  const d = doc_();
   if (S.occ) {
     for (const row of rowsEl.children) markNodes($('.c', row), S.occ, true, 'occ');
   }

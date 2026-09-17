@@ -117,6 +117,9 @@ const MD_ORIGIN = 'http://rx0.invalid';
 
 /* The URL parser drops tabs and newlines anywhere and control characters at
    either end, so "java&#9;script:" still has a scheme. Test what it will see. */
+// Strips ASCII control characters (including \x00) from link targets:
+// intentional, this is URL sanitization, not an accidental pattern.
+// eslint-disable-next-line no-control-regex
 const mdURL = ref => ref.replace(/[\t\n\r]/g, '').replace(/^[\x00-\x20]+|[\x00-\x20]+$/g, '');
 
 /* Parsing into a DOMParser document runs no script and loads nothing, so the
@@ -311,7 +314,7 @@ async function mdFollow(path, anchor) {
   // A link to a folder reveals it in the explorer.
   try {
     await api('/api/tree', { dir: path });
-    showPanel('files');
+    showPanel();
     revealDir(path);
     return;
   } catch {}

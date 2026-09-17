@@ -2,7 +2,9 @@
 import { $, S, doc_, keyLabel } from './state.js';
 import { vp, copyToClipboard, showToast } from './ui.js';
 import { render } from './renderer.js';
-import { findReferences } from './lsp.js';
+import { findReferences, gotoDefinition } from './lsp.js';
+import { showCalls } from './calls.js';
+import { revealFile } from './tree.js';
 import { fitStatus } from './status.js';
 
 /* While code is selected, the left of the status bar trades its navigation
@@ -179,6 +181,12 @@ export function runSelectionAction(act) {
     agentHandler(current);
   } else if (act === 'usages') {
     findReferences(text.split(/\s+/)[0] || text);
+  } else if (act === 'go-def') {
+    gotoDefinition(text.split(/\s+/)[0] || text);
+  } else if (act === 'calls') {
+    showCalls(text.split(/\s+/)[0] || text);
+  } else if (act === 'reveal') {
+    revealFile(path);
   } else {
     return false;
   }
@@ -194,27 +202,60 @@ export function closeSelMenu() {
 }
 
 const SEL_MENU_ITEMS = [
-  { sel: 'copy-ref', label: 'Copy Ref', keys: 'Alt+C' },
-  { sel: 'copy-agent', label: 'Copy with Context', keys: 'Alt+A' },
-  { sel: 'agent-edit', label: 'Edit Inline', keys: 'Alt+E' },
-  { sel: 'usages', label: 'Find Usages', keys: 'Alt+U' },
+  { sel: 'go-def', label: 'Go to Definition', keys: 'F12', group: 'navigate' },
+  { sel: 'usages', label: 'Find Usages', keys: 'Alt+U', group: 'navigate' },
+  { sel: 'calls', label: 'Call Trail', keys: 'Alt+Shift+H', group: 'navigate' },
+  { sel: 'reveal', label: 'Reveal in Tree', keys: '', group: 'navigate' },
+  { sel: 'copy-ref', label: 'Copy Ref', keys: 'Alt+C', group: 'edit' },
+  { sel: 'copy-agent', label: 'Copy with Context', keys: 'Alt+A', group: 'edit' },
+  { sel: 'agent-edit', label: 'Edit Inline', keys: 'Alt+E', group: 'edit' },
 ];
 
-/* Built from the selection actions each time, keeping Find Usages in context menu. */
+/* Edit Inline needs a harness. The harness list loads after boot: while
+   it is unknown the item stays enabled (optimistic, no flicker); once
+   loaded with nothing installed it disables with the fix attached. */
+function agentEditState() {
+  const agents = S.meta?.agents;
+  if (!agents) return { disabled: false, hint: '' };
+  const ready = agents.some(h => h.installed);
+  return ready
+    ? { disabled: false, hint: '' }
+    : { disabled: true, hint: 'Install a coding harness first' };
+}
+
+/* Rebuilt each open: availability is fresh and the menu never goes stale. */
 function openSelMenu(x, y) {
   menu.replaceChildren();
+  const edit = agentEditState();
+  let lastGroup = '';
   for (const item of SEL_MENU_ITEMS) {
+    if (item.group !== lastGroup) {
+      if (lastGroup) {
+        const sep = document.createElement('div');
+        sep.className = 'sel-menu-sep';
+        sep.setAttribute('role', 'separator');
+        menu.append(sep);
+      }
+      lastGroup = item.group;
+    }
     const btn = document.createElement('button');
     btn.className = 'sel-menu-item';
     btn.dataset.sel = item.sel;
     btn.setAttribute('role', 'menuitem');
+    const off = item.sel === 'agent-edit' && edit.disabled;
+    if (off) {
+      btn.setAttribute('aria-disabled', 'true');
+      btn.title = edit.hint;
+    }
     const label = document.createElement('span');
     label.textContent = item.label;
     btn.append(label);
-    const kbd = document.createElement('kbd');
-    kbd.className = 'footer-kbd';
-    kbd.textContent = keyLabel(item.keys);
-    btn.append(kbd);
+    if (item.keys) {
+      const kbd = document.createElement('kbd');
+      kbd.className = 'footer-kbd';
+      kbd.textContent = keyLabel(item.keys);
+      btn.append(kbd);
+    }
     menu.append(btn);
   }
   menu.hidden = false;
@@ -222,6 +263,28 @@ function openSelMenu(x, y) {
   const w = menu.offsetWidth, h = menu.offsetHeight;
   menu.style.left = Math.max(4, x + w > innerWidth - 4 ? x - w : x) + 'px';
   menu.style.top = Math.max(4, y + h > innerHeight - 4 ? y - h : y) + 'px';
+}
+
+function menuItems() {
+  return [...menu.querySelectorAll('.sel-menu-item:not([aria-disabled="true"])')];
+}
+
+/* Arrow-key operation while the menu is open. Focus returns to the
+   editor on close; see the Escape branch in shortcuts.js. */
+function menuKey(e) {
+  if (menu.hidden) return;
+  const items = menuItems();
+  if (!items.length) return;
+  const at = items.indexOf(document.activeElement);
+  if (e.key === 'ArrowDown' || e.key === 'ArrowUp') {
+    e.preventDefault();
+    const next = e.key === 'ArrowDown' ? (at + 1) % items.length : (at - 1 + items.length) % items.length;
+    items[next].focus();
+  } else if (e.key === 'Enter' && at >= 0) {
+    e.preventDefault();
+    closeSelMenu();
+    runSelectionAction(items[at].dataset.sel);
+  }
 }
 
 const bar = () => $('#footer-sel');
@@ -248,11 +311,19 @@ export function initSelectionBar() {
     el.addEventListener('mousedown', e => e.preventDefault());
     el.addEventListener('click', e => {
       const btn = e.target.closest('[data-sel]');
-      if (!btn) return;
+      if (!btn || btn.getAttribute('aria-disabled') === 'true') return;
       closeSelMenu();
       runSelectionAction(btn.dataset.sel);
     });
   }
+  // Keyboard operation while the menu is open; Esc returns focus.
+  document.addEventListener('keydown', menuKey);
+  document.addEventListener('keydown', e => {
+    if (e.key === 'Escape' && !menu.hidden) {
+      closeSelMenu();
+      vp.focus({ preventScroll: true });
+    }
+  });
   if (!menu) return;
 
   /* Only a right click on a selection is taken over. Anywhere else the browser

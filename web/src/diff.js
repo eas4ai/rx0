@@ -24,10 +24,6 @@ export function layoutPref() {
   try { return localStorage.getItem('rx0.diffLayout') || 'split'; } catch { return 'split'; }
 }
 
-function diffMode(d = doc_()) {
-  return (d && d.diffMode) || null;
-}
-
 /* Show or hide the diff overlay to match the active tab, and re-render when
    the layout (split/unified) changes while already showing the same doc --
    switching layout doesn't change which doc is "shown", so that alone can't

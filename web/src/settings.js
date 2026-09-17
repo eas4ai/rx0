@@ -1,7 +1,7 @@
 // web/src/settings.js
-import { $, $$, esc, S, api, apiPost } from './state.js';
+import { $, esc, S, api, apiPost } from './state.js';
 import { applyEditorTypography, toggleWordWrap, toggleLineNumbers } from './renderer.js';
-import { setTheme, listThemes } from './theme.js';
+import { setTheme } from './theme.js';
 import { setLayoutPref } from './diff.js';
 
 export let settingsModalEl = null;
@@ -519,7 +519,7 @@ function renderSettingsList() {
   const currentSettings = settingsData.settings || {};
   const defaults = settingsData.defaults || {};
 
-  let items = schema;
+  let items;
   if (q) {
     items = schema.filter(s => {
       const title = (s.title || s.Title || '').toLowerCase();
@@ -551,8 +551,8 @@ function renderSettingsList() {
     const modified = isSettingModified(key, currentSettings[key], def);
     const modClass = modified ? ' is-modified' : '';
 
-    let controlHtml = '';
-    let aptValuesHtml = '';
+    let controlHtml;
+    let aptValuesHtml;
 
     if (type === 'boolean') {
       const checked = (val === true || val === 'true') ? 'checked' : '';

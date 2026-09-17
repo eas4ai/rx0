@@ -16,6 +16,10 @@ jobs:
         uses: actions/setup-node@v4
         with:
           node-version: '24'
+          cache: npm
+
+      - name: Install JS toolchain
+        run: npm ci
 
       - name: Setup Rust
         uses: dtolnay/rust-toolchain@stable
@@ -31,8 +35,14 @@ jobs:
       - name: Tests
         run: cargo test
 
+      - name: JS tests
+        run: npm test
+
+      - name: JS lint
+        run: npm run lint
+
       - name: Web bundle is fresh
-        # Plain `node` (no bun): must reproduce the committed bundle.
+        # rsbuild must reproduce the committed bundle and vendor CSS.
         run: |
-          node ./scripts/build-web.js
-          git diff --exit-code -- web/app.js
+          npm run build
+          git diff --exit-code -- web/app.js web/app.js.LICENSE.txt web/vendor/

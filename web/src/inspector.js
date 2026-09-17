@@ -1,5 +1,5 @@
 // web/src/inspector.js
-import { $, $$, esc, doc_, api } from './state.js';
+import { $, $$, esc, doc_, api, S } from './state.js';
 import { layout, render } from './renderer.js';
 import { updateStatus, setStatusNote } from './status.js';
 import { openFile, centerLine } from './tabs.js';
@@ -36,7 +36,7 @@ export function setRightInspectorTab(tab) {
   if (tab === 'search') $('#q')?.focus();
 }
 
-export function renderRightResults(word, hits, server, isExact) {
+export function renderRightResults(word, hits, server, _isExact) {
   const targetEl = $('#right-ref-target');
   const badgeEl = $('#right-ref-badge');
   const listEl = $('#right-refs-list');

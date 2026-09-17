@@ -58,6 +58,10 @@ jobs:
         uses: actions/setup-node@v4
         with:
           node-version: '24'
+          cache: npm
+
+      - name: Install JS toolchain
+        run: npm ci
 
       - name: Setup Rust
         uses: dtolnay/rust-toolchain@stable
@@ -81,8 +85,7 @@ jobs:
           grep '^version = ' Cargo.toml
 
       - name: Bundle Web Assets
-        # Plain `node` (no bun): reproduces the committed bundle scheme.
-        run: node ./scripts/build-web.js
+        run: npm run build
 
       - name: Build Release Binary
         # PowerShell (the Windows default) does not understand
