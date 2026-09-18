@@ -8,8 +8,8 @@
     "build": "node scripts/sync-web-vendor.js && rsbuild build",
     "test": "rstest run",
     "lint": "rslint web/src",
-    "desktop:dev": "tauri dev",
-    "desktop:build": "tauri build"
+    "desktop:dev": "sh scripts/prepare-sidecar.sh debug && tauri dev",
+    "desktop:build": "sh scripts/prepare-sidecar.sh release && tauri build"
   },
   "devDependencies": {
     "@rsbuild/core": "^2.2.7",

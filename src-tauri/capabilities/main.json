@@ -9,8 +9,16 @@
     "core:event:default",
     "dialog:allow-open",
     "store:default",
-    "updater:default",
     "window-state:default",
-    "shell:allow-spawn"
+    {
+      "identifier": "shell:allow-spawn",
+      "allow": [
+        {
+          "name": "binaries/rx0-sidecar",
+          "sidecar": true,
+          "args": true
+        }
+      ]
+    }
   ]
 }

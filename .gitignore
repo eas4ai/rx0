@@ -166,3 +166,7 @@ dist
 vite.config.js.timestamp-*
 vite.config.ts.timestamp-*
 .vite/
+
+# Tauri generated + staged sidecars
+src-tauri/gen
+src-tauri/binaries
