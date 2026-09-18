@@ -749,7 +749,9 @@ async fn agent_unavailable_without_manager() {
 #[allow(clippy::await_holding_lock)]
 async fn agent_edit_needs_a_harness() {
     let _lock = SETTINGS_ENV_LOCK.lock().unwrap();
-    let (_cfg, mut saved) = isolate_agent_env();
+    let (_cfg, saved) = isolate_agent_env();
+    #[cfg(windows)]
+    let mut saved = saved;
     #[cfg(windows)]
     let _echo_dir = {
         // No echo on PATH: fake one (selection only looks it up).
