@@ -106,9 +106,81 @@ jobs:
           name: rx0-${{ matrix.goos }}-${{ matrix.goarch }}
           path: dist/rx0-*
 
+  desktop:
+    name: Desktop installer (${{ matrix.runner }})
+    runs-on: ${{ matrix.runner }}
+    strategy:
+      matrix:
+        include:
+          # Installers bundle where they run natively; the raw-binary
+          # matrix above keeps covering every triple. dmg needs a GUI
+          # session for its Finder layout step: hosted macOS runners
+          # have one, headless SSH sessions do not.
+          - runner: ubuntu-latest
+            bundle: appimage
+            glob: src-tauri/target/release/bundle/appimage/*.AppImage
+          - runner: windows-latest
+            bundle: nsis
+            glob: src-tauri/target/release/bundle/nsis/*-setup.exe
+          - runner: macos-14
+            bundle: dmg
+            glob: src-tauri/target/release/bundle/dmg/*.dmg
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+          cache: npm
+
+      - name: Install JS toolchain
+        run: npm ci
+
+      - name: Setup Rust
+        uses: dtolnay/rust-toolchain@stable
+
+      - name: Install Linux webview deps
+        if: runner.os == 'Linux'
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y libwebkit2gtk-4.1-dev build-essential curl wget file \
+            libssl-dev libgtk-3-dev libayatana-appindicator3-dev librsvg2-dev
+
+      - name: Determine Version
+        id: get_version
+        shell: bash
+        run: |
+          if [ -n "${{ github.event.inputs.version }}" ]; then
+            TAG="${{ github.event.inputs.version }}"
+          else
+            TAG="${GITHUB_REF#refs/tags/}"
+          fi
+          VER="${TAG#v}"
+          echo "version=$VER" >> $GITHUB_OUTPUT
+          # All three version carriers must match the tag: the bundle
+          # filename comes from tauri.conf.json, metadata from the crate.
+          sed -i -e "s/^version = \".*\"$/version = \"$VER\"/" Cargo.toml src-tauri/Cargo.toml
+          sed -i -e "s/\"version\": \".*\"/\"version\": \"$VER\"/" src-tauri/tauri.conf.json
+          grep '^version = ' Cargo.toml src-tauri/Cargo.toml
+          grep '"version": ' src-tauri/tauri.conf.json
+
+      - name: Build Desktop Bundle
+        shell: bash
+        env:
+          RX0_POSTHOG_KEY: ${{ secrets.POSTHOG_KEY }}
+        run: npm run desktop:build
+
+      - name: Upload Installer
+        uses: actions/upload-artifact@v4
+        with:
+          name: rx0-desktop-${{ matrix.bundle }}
+          path: ${{ matrix.glob }}
+
   publish:
     name: Create GitHub Release
-    needs: build-and-release
+    needs: [build-and-release, desktop]
     runs-on: ubuntu-latest
     steps:
       - name: Checkout repository
