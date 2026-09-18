@@ -30,6 +30,30 @@ fn probe_cache() -> &'static Mutex<HashMap<String, GitInfo>> {
     CACHE.get_or_init(|| Mutex::new(HashMap::new()))
 }
 
+/// Root for prefix comparison: `rev-parse --show-toplevel` resolves
+/// symlinks (macOS TMPDIR lives under /var -> /private/var), so a
+/// symlinked served root would otherwise match no status keys.
+fn canonical_root(root: &Path) -> PathBuf {
+    let canon = std::fs::canonicalize(root).unwrap_or_else(|_| root.to_path_buf());
+    #[cfg(windows)]
+    {
+        // canonicalize yields \\?\C:\... while git reports C:/...; strip
+        // the prefix only for drive paths (never \\?\UNC\...).
+        let s = canon.to_string_lossy();
+        if let Some(stripped) = s.strip_prefix(r"\\?\") {
+            let b = stripped.as_bytes();
+            if b.len() > 2
+                && b[0].is_ascii_alphabetic()
+                && b[1] == b':'
+                && (b[2] == b'\\' || b[2] == b'/')
+            {
+                return PathBuf::from(stripped);
+            }
+        }
+    }
+    canon
+}
+
 fn git_probe(root: &Path) -> GitInfo {
     if DISABLED.load(Ordering::Relaxed) {
         return GitInfo::default();
@@ -110,7 +134,7 @@ pub fn git_status(root: &Path) -> Option<HashMap<String, String>> {
     }
     // Porcelain paths are repo-root-relative regardless of -C; strip the
     // served root's offset to match the index's keys.
-    let prefix = rel_to_slash(Path::new(&info.toplevel), root)
+    let prefix = rel_to_slash(Path::new(&info.toplevel), &canonical_root(root))
         .filter(|rel| rel != ".")
         .map(|rel| rel + "/")
         .unwrap_or_default();
