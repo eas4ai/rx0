@@ -1,0 +1,16 @@
+{
+  "$schema": "https://schema.tauri.app/config/2/capability",
+  "identifier": "main-capability",
+  "description": "rx0 desktop shell: window, dialog, persistence, updates, sidecar spawn",
+  "windows": ["main"],
+  "permissions": [
+    "core:default",
+    "core:window:default",
+    "core:event:default",
+    "dialog:allow-open",
+    "store:default",
+    "updater:default",
+    "window-state:default",
+    "shell:allow-spawn"
+  ]
+}
