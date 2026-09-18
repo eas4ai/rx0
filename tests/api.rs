@@ -576,16 +576,31 @@ fn origin_for(addr: std::net::SocketAddr) -> String {
 
 /// Write an executable stand-in for a coding harness, outside the
 /// workspace so it never shows up as a change the run made.
-fn write_harness(body: &str) -> (scratch::Guard, PathBuf) {
+/// Fake harness plus its `{prompt}` spec, runnable on this OS. Unix: a
+/// shell script spawned directly. Windows: a .ps1 run through
+/// powershell -File (CreateProcess cannot spawn scripts, and the
+/// whitespace-split spec cannot carry a -Command script); the prompt
+/// arrives as $args[0] with newlines intact.
+#[cfg(unix)]
+fn write_harness(sh_body: &str, _ps_body: &str) -> (scratch::Guard, String) {
     let dir = scratch::create("apiharness");
     let path = dir.path().join("harness.sh");
-    std::fs::write(&path, format!("#!/bin/sh\n{body}")).unwrap();
-    #[cfg(unix)]
-    {
-        use std::os::unix::fs::PermissionsExt;
-        std::fs::set_permissions(&path, std::fs::Permissions::from_mode(0o755)).unwrap();
-    }
-    (dir, path)
+    std::fs::write(&path, format!("#!/bin/sh\n{sh_body}")).unwrap();
+    use std::os::unix::fs::PermissionsExt;
+    std::fs::set_permissions(&path, std::fs::Permissions::from_mode(0o755)).unwrap();
+    (dir, format!("{} {{prompt}}", path.display()))
+}
+
+#[cfg(windows)]
+fn write_harness(_sh_body: &str, ps_body: &str) -> (scratch::Guard, String) {
+    let dir = scratch::create("apiharness");
+    let path = dir.path().join("harness.ps1");
+    std::fs::write(&path, format!("{ps_body}\r\n")).unwrap();
+    let spec = format!(
+        "powershell.exe -NoProfile -NonInteractive -ExecutionPolicy Bypass -File {} {{prompt}}",
+        path.display()
+    );
+    (dir, spec)
 }
 
 /// Git repo with a clean keep.go, mirroring Go's gitRepo.
@@ -734,7 +749,26 @@ async fn agent_unavailable_without_manager() {
 #[allow(clippy::await_holding_lock)]
 async fn agent_edit_needs_a_harness() {
     let _lock = SETTINGS_ENV_LOCK.lock().unwrap();
-    let (_cfg, saved) = isolate_agent_env();
+    let (_cfg, mut saved) = isolate_agent_env();
+    #[cfg(windows)]
+    let _echo_dir = {
+        // No echo on PATH: fake one (selection only looks it up).
+        let bindir = scratch::create("apiecho");
+        std::fs::write(bindir.path().join("echo"), "").unwrap();
+        saved.push(("PATH".to_string(), std::env::var("PATH").ok()));
+        // SAFETY: caller holds SETTINGS_ENV_LOCK.
+        unsafe {
+            std::env::set_var(
+                "PATH",
+                format!(
+                    "{};{}",
+                    bindir.path().display(),
+                    std::env::var("PATH").unwrap_or_default()
+                ),
+            )
+        };
+        bindir
+    };
     let dir = scratch::create("apiagentplain");
     std::fs::write(dir.path().join("a.go"), "package a\n").unwrap();
     let addr = start_agent_server(dir.path(), "");
@@ -781,11 +815,17 @@ async fn agent_edit_runs_and_reports_change() {
     let (_repo, root) = agent_git_repo();
     let prompt_dir = scratch::create("apiagentprompt");
     let prompt_file = prompt_dir.path().join("prompt.txt");
-    let (_harness, harness) = write_harness(&format!(
-        "printf 'touched\\n' >> keep.go\nprintf '%s' \"$1\" > {}\n",
-        prompt_file.display()
-    ));
-    let addr = start_agent_server(&root, &format!("{} {{prompt}}", harness.display()));
+    let (_harness, spec) = write_harness(
+        &format!(
+            "printf 'touched\\n' >> keep.go\nprintf '%s' \"$1\" > {}\n",
+            prompt_file.display()
+        ),
+        &format!(
+            "Add-Content keep.go 'touched'; Set-Content -NoNewline -Path '{}' -Value $args[0]",
+            prompt_file.display()
+        ),
+    );
+    let addr = start_agent_server(&root, &spec);
     let origin = origin_for(addr);
 
     let (status, _, _) = post(
@@ -822,8 +862,11 @@ async fn agent_outside_git_reports_unknown() {
     let (_cfg, saved) = isolate_agent_env();
     let dir = scratch::create("apiagentnogit");
     std::fs::write(dir.path().join("a.go"), "package a\n").unwrap();
-    let (_harness, harness) = write_harness("printf 'touched\\n' >> a.go\n");
-    let addr = start_agent_server(dir.path(), &format!("{} {{prompt}}", harness.display()));
+    let (_harness, spec) = write_harness(
+        "printf 'touched\\n' >> a.go\n",
+        "Add-Content a.go 'touched'",
+    );
+    let addr = start_agent_server(dir.path(), &spec);
     let origin = origin_for(addr);
 
     let (status, _, _) = post(
@@ -855,8 +898,8 @@ async fn agent_overlap_rules() {
     let _lock = SETTINGS_ENV_LOCK.lock().unwrap();
     let (_cfg, saved) = isolate_agent_env();
     let (_repo, root) = agent_git_repo();
-    let (_harness, harness) = write_harness("sleep 2\n");
-    let addr = start_agent_server(&root, &format!("{} {{prompt}}", harness.display()));
+    let (_harness, spec) = write_harness("sleep 2\n", "Start-Sleep -Seconds 2");
+    let addr = start_agent_server(&root, &spec);
     let origin = origin_for(addr);
 
     let (status, _, body) =
@@ -896,8 +939,8 @@ async fn agent_cancel_and_origin_gate() {
     let _lock = SETTINGS_ENV_LOCK.lock().unwrap();
     let (_cfg, saved) = isolate_agent_env();
     let (_repo, root) = agent_git_repo();
-    let (_harness, harness) = write_harness("sleep 5\n");
-    let addr = start_agent_server(&root, &format!("{} {{prompt}}", harness.display()));
+    let (_harness, spec) = write_harness("sleep 5\n", "Start-Sleep -Seconds 5");
+    let addr = start_agent_server(&root, &spec);
     let origin = origin_for(addr);
 
     // Cross-origin posts are refused; mutation routes reject GET.
@@ -1120,6 +1163,12 @@ async fn settings_get_and_post_round_trip() {
     }
 }
 
+/// Cursor-position queries in a PTY chunk. Headless tests answer them
+/// the way xterm.js does, or ConPTY shells stall waiting for a reply.
+fn dsr_queries(chunk: &[u8]) -> usize {
+    chunk.windows(4).filter(|w| *w == b"\x1b[6n").count()
+}
+
 /// The terminal socket runs a real shell: bytes sent arrive back as
 /// output, a second connection attaches to the same session, and a
 /// missing Origin is refused at the gate.
@@ -1148,6 +1197,13 @@ async fn terminal_ws_shell_round_trip() {
     tokio::time::timeout(Duration::from_secs(15), async {
         while let Some(msg) = ws.next().await {
             if let Ok(tokio_tungstenite::tungstenite::Message::Binary(b)) = msg {
+                for _ in 0..dsr_queries(&b) {
+                    ws.send(tokio_tungstenite::tungstenite::Message::Binary(
+                        tokio_tungstenite::tungstenite::Bytes::from_static(b"\x1b[24;80R"),
+                    ))
+                    .await
+                    .unwrap();
+                }
                 seen.extend_from_slice(&b);
                 if String::from_utf8_lossy(&seen).contains("ws-hello") {
                     break;
@@ -1178,6 +1234,13 @@ async fn terminal_ws_shell_round_trip() {
     tokio::time::timeout(Duration::from_secs(15), async {
         while let Some(msg) = ws2.next().await {
             if let Ok(tokio_tungstenite::tungstenite::Message::Binary(b)) = msg {
+                for _ in 0..dsr_queries(&b) {
+                    ws2.send(tokio_tungstenite::tungstenite::Message::Binary(
+                        tokio_tungstenite::tungstenite::Bytes::from_static(b"\x1b[24;80R"),
+                    ))
+                    .await
+                    .unwrap();
+                }
                 seen2.extend_from_slice(&b);
                 if String::from_utf8_lossy(&seen2).contains("ws-again") {
                     break;
